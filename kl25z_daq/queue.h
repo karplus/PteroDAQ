@@ -9,3 +9,4 @@ void queue_push1(uint8_t x);
 uint16_t queue_space(void);
 bool queue_avail(void);
 uint8_t queue_pop(void);
+void queue_clear(void);

@@ -65,3 +65,8 @@ uint8_t queue_pop(void) {
     queue_wrotelast = false;
     return x;
 }
+
+void queue_clear(void) {
+    queue_head = queue_tail = 0;
+    queue_wrotelast = false;
+}

@@ -61,16 +61,17 @@ void stoprunning(void);
 void recorddata(void);
 
 
+
 int main(void) {
     // set bus clock to 16 MHz to avoid divide in microsecond timestamp
-    SIM->CLKDIV1 = (SIM->CLKDIV1 & ~SIM_CLKDIV1_OUTDIV4_MASK) | SIM_CLKDIV1_OUTDIV4(2);
+    //SIM->CLKDIV1 = (SIM->CLKDIV1 & ~SIM_CLKDIV1_OUTDIV4_MASK) | SIM_CLKDIV1_OUTDIV4(2);
+    // TODO: why does this break comms?
+
     adc_init();
     pit_init();
     
     // send handshake message
     sendresp(MSG("DAQ"));
-    sendresp(MSG("DAQ"));
-    sendresp(MSG("DAQ"));    
     
     for (;;) {
         if (comm.readable()) {
@@ -97,6 +98,11 @@ int main(void) {
                 case 'I':
                     recorddata();
                     sendresp(NOMSG);
+                    break;
+                case 'H':
+                    stoprunning();
+                    queue_clear();
+                    sendresp(MSG("DAQ"));
                     break;
                 case 'M':
                     // model info TODO
@@ -163,6 +169,8 @@ void parseconfig(uint8_t len) {
 void sendresp(const uint8_t* msg, uint8_t len) {
     uint8_t chk, ind;
     chk = '!' + cmd + len;
+    sendchar('!');
+    sendchar(cmd);
     for (ind = 0; ind < len; ind++) {
         sendchar(msg[ind]);
         chk += msg[ind];
