@@ -171,6 +171,7 @@ void sendresp(const uint8_t* msg, uint8_t len) {
     chk = '!' + cmd + len;
     sendchar('!');
     sendchar(cmd);
+    sendchar(len);
     for (ind = 0; ind < len; ind++) {
         sendchar(msg[ind]);
         chk += msg[ind];
