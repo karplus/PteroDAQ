@@ -70,7 +70,7 @@ class CommPort(object):
     def handshake(self):
         return self.command('H', '') == 'DAQ'
     
-    def command(self, c, d):
+    def command(self, c, d=''):
         mbase = b'!' + tobytes(c) + asbyte(len(d)) + tobytes(d)
         msg = mbase + asbyte(-bytesum(mbase) % 256)
         self.ser.write(msg)
