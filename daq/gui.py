@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox as tkm
+from tkinter import filedialog as tkf
 from tkinter import ttk
 import core
 
@@ -38,7 +39,7 @@ class ImageButton(ttk.Label):
         if command is not None:
             self.bind('<ButtonRelease-1>', command)
 
-class Channel(ttk.Frame):
+class Channel(tk.Frame):
     chnums = {0}
     def __init__(self, master):
         def changeicon(val, *args):
@@ -46,20 +47,21 @@ class Channel(ttk.Frame):
                 pinchoice['image'] = sineimg
             else:
                 pinchoice['image'] = squareimg
-        ttk.Frame.__init__(self, master)
+        tk.Frame.__init__(self, master)
         self.num = max(Channel.chnums) + 1
         Channel.chnums.add(self.num)
         self.namevar = nv = tk.StringVar()
         self.pinvar = pv = tk.StringVar()
+        self.can = tk.Canvas(self, height=32, width=200)
+        self.canline = self.can.create_line(0, 0, 0, 0)
+        self.coords = []
         nv.set('ch{}'.format(self.num))
         namefield = ttk.Entry(self, textvariable=nv, width=16, font=('TkTextFont', 0, 'bold'))
         namefield.focus()
         pinchoice = tk.OptionMenu(self, pv, '')
         pinchoice['menu'].delete(0)
-        anaset = set()
         for x in daq.board.analogs:
             pinchoice['menu'].add_command(label=x[0], image=sineimg, command=tk._setit(pv, x[0], changeicon), compound='left')
-            anaset.add(x[0])
         for x in daq.board.digitals:
             if x[0] not in anaset:
                 pinchoice['menu'].add_command(label=x[0], image=squareimg, command=tk._setit(pv, x[0], changeicon), compound='left')
@@ -71,18 +73,45 @@ class Channel(ttk.Frame):
         namefield.grid(row=0, column=0, sticky='ew')
         pinchoice.grid(row=0, column=1)
         delbutton.grid(row=0, column=2)
-        ttk.Separator(self, orient='horizontal').grid(row=1, column=0, columnspan=3, sticky='ew', padx=2, pady=2)
+        self.can.grid(row=0, column=3)
+        ttk.Separator(self, orient='horizontal').grid(row=1, column=0, columnspan=4, sticky='ew', padx=2, pady=2)
     def remove(self, e=None):
         Channel.chnums.discard(self.num)
         self.destroy()
         channels.update_idletasks()
         outcchs['scrollregion'] = (0,0,channels.winfo_width(), channels.winfo_height())
+    def add_data(self, ds):
+        del ds[:-200]
+        if self.pinvar.get() in anaset:
+            ds = [d/2048 for d in ds]
+        else:
+            ds = [31*d for d in ds]
+        c = self.coords
+        #print(c)
+        if not c:
+            c[:] = [0, ds[0]]
+            for n, x in enumerate(ds):
+                c.append(n)
+                c.append(x)
+        else:
+            # TODO
+            del c[:-400+2*len(ds)]
+            if c[0]:
+                for n in range(0, len(c), 2):
+                    c[n] -= len(ds)
+            for n, d in enumerate(ds, c[-2]+1):
+                c.append(n)
+                c.append(d)
+        #print(c)
+        self.can.coords(self.canline, *c)
 
 root = tk.Tk()
 daq = core.DataAcquisition()
 
 f = ttk.Frame(root)
 root.title('Data Acquisition')
+
+anaset = {x[0] for x in daq.board.analogs}
 
 sineimg = tk.PhotoImage(file='icons/sinewave.gif')
 squareimg = tk.PhotoImage(file='icons/squarewave.gif')
@@ -95,6 +124,14 @@ notes = ttk.Frame(f)
 channels = ttk.Frame(outfchs)
 outcchs.create_window(0, 0, anchor='nw', window=channels)
 
+def makeconf():
+    conf = (core.TriggerTimed(secvar.get()) if triggertype.get() == 0 else core.TriggerPinchange(pinvar.get(), edgevar.get()),
+        1,
+        [core.AnalogChannel(next(x[1] for x in daq.board.analogs if x[0] == n))
+            if n in anaset else
+            core.DigitalChannel(next(x[1] for x in daq.board.digitals if x[0] == n))
+            for n in (ch.pinvar.get() for ch in channels.winfo_children())])
+    return conf
 def newchannel(e=None):
     ch = Channel(channels)
     ch.pack()
@@ -104,8 +141,9 @@ def newchannel(e=None):
     outcchs.yview_moveto(1)
 def startrec(e=None):
     statelabel['text'] = 'Recording'
-    daq.config((TriggerTimed(secvar.get()) if triggertype.get() == 0 else TriggerPinchange(pinvar.get(), edgevar.get()),
-        AnalogReference(1), []))
+    conf = makeconf()
+    print(conf)
+    daq.config(conf)
     daq.go()
     #statelabel['fg'] = '#800000'
 def pausrec(e=None):
@@ -113,11 +151,17 @@ def pausrec(e=None):
     daq.stop()
     #statelabel['fg'] = '#000080'
 def oneread(e=None):
+    daq.config(makeconf())
     daq.oneread()
     #countlabel['text'] = int(countlabel['text'])+1
 def clearreads(e=None):
     if tkm.askyesno(message='Clear all current readings?', icon='question'):
         countlabel['text'] = '0'
+def savefile(e=None):
+    pauserec()
+    fn = tkf.asksaveasfilename(mode='w', defaultextension='.txt')
+    if fn is not None:
+        daq.save(fn)
 
 statelabel = ttk.Label(controls, text='Paused', font=('TkTextFont', 0, 'bold'), width=12)
 countlabel = ttk.Label(controls, text='0')
@@ -126,6 +170,7 @@ pausebutton = ImageButton(controls, file='icons/pause.gif', command=pausrec)
 addchbutton = ImageButton(controls, file='icons/plus.gif', command=newchannel)
 singlebutton = ImageButton(controls, file='icons/one.gif', command=oneread)
 clearbutton = ImageButton(controls, file='icons/trash.gif', command=clearreads)
+savebutton = ttk.Button(controls, command=savefile)
 reclabel = ttk.Label(controls, text='Record')
 pauselabel = ttk.Label(controls, text='Pause')
 addchlabel = ttk.Label(controls, text='Add Channel')
@@ -138,6 +183,7 @@ pausebutton.grid(row=0, column=1)
 addchbutton.grid(row=0, column=3)
 singlebutton.grid(row=0, column=4)
 clearbutton.grid(row=0, column=5)
+savebutton.grid(row=0, column=6)
 reclabel.grid(row=1, column=0)
 pauselabel.grid(row=1, column=1)
 addchlabel.grid(row=1, column=3)
@@ -208,9 +254,20 @@ outfchs.columnconfigure(0, weight=1)
 #channels.grid(row=4, column=0, columnspan=3, sticky='ew')
 f.pack(fill='y', expand=True)
 
+def update_data():
+    newdat = daq.new_data()
+    countlabel['text'] = int(countlabel['text']) + len(newdat)
+    if newdat:
+        #print(newdat)
+        for n, ch in enumerate(channels.winfo_children(), 1):
+            ch.add_data([dat[n] for dat in newdat])
+    root.after(100, update_data)
+
 root.update_idletasks()
 root.resizable(False, False)
 root.tk.createcommand('scrollcan', scrollcan)
 root.bind_all('<MouseWheel>', 'scrollcan %D')
+root.after(100, update_data)
 
+daq.connect('/dev/tty.usbmodemfa121', lambda: print('Ready.'))
 root.mainloop()

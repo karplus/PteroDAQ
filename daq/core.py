@@ -37,8 +37,8 @@ class DataAcquisition(object):
             clkdiv, clkval = self.board.timer_calc(trigger.period)[1]
             confsend.extend(struct.pack('<BBL', 1, clkdiv, clkval)[:-1])
         elif isinstance(trigger, TriggerPinchange):
-            sense = next(x[1] for x in daq.board.intsense if x[0] == trigger.sense)
-            pin = next(x[1] for x in daq.board.eint if x[0] == trigger.pin)
+            sense = next(x[1] for x in self.board.intsense if x[0] == trigger.sense)
+            pin = next(x[1] for x in self.board.eint if x[0] == trigger.pin)
             confsend.extend(struct.pack('<BBB', 2, sense, pin))
         confsend.append(aref)
         for ch in channels:
@@ -56,6 +56,8 @@ class DataAcquisition(object):
         res = self._data[self._nextdata:ld]
         self._nextdata = ld
         return res
+    def save(self, fn):
+        ...
     def _onconnect(self):
         # todo: version and model info
         self._conncall()
@@ -80,7 +82,7 @@ class DataAcquisition(object):
         bufpos = 0
         for n, res in enumerate(results):
             if res is None:
-                results[n] = bool((digbuf[buspos] >> bitcount) & 1)
+                results[n] = bool((digbuf[bufpos] >> bitcount) & 1)
                 bitcount += 1
                 if bitcount == 8:
                     bitcount = 0

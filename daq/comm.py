@@ -87,7 +87,7 @@ class CommPort(object):
         If it forms a data record, call _datacallback with it.
         """
         rd = self.ser.read
-        print('readin begin')
+        #print('readin begin')
         while self._do_readin:
             c = rd(1)
             #print(c)
@@ -96,18 +96,22 @@ class CommPort(object):
                 ln = rd(1)
                 data = rd(asint(ln))
                 chk = rd(1)
-                print('resp', c, cm, ln, data, chk)
+                #print('resp', c, cm, ln, data, chk)
                 if (asint(b'!') + asint(cm) + asint(ln) + bytesum(data) + asint(chk)) % 256 == 0:
                     self._cmresp = cm, data
                     self._respavail.set()
+                else:
+                    print('Read error.')
             elif c == b'*':
                 ln = rd(1)
                 data = rd(asint(ln))
                 chk = rd(1)
-                print('recd', data)
+                #print('recd', data)
                 if (asint(b'*') + asint(ln) + bytesum(data) + asint(chk)) % 256 == 0:
-                    print('datacb')
+                    #print('datacb')
                     self._datacb(data)
+                else:
+                    print('Read error.')
     
     def _enum(self):
         """Keep track of the number of serial ports available.
