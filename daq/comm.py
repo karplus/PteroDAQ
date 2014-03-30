@@ -1,10 +1,10 @@
 from serial import Serial
 from time import sleep
 from threading import Thread, Event
-from sys import versioninfo
+from sys import version_info
 from getports import ports
 
-if versioninfo[0] == 3:
+if version_info[0] == 3:
     # Python 3
     def tobytes(x):
         return x.encode('latin1')
@@ -90,6 +90,7 @@ class CommPort(object):
         print('readin begin')
         while self._do_readin:
             c = rd(1)
+            #print(c)
             if c == b'!':
                 cm = rd(1)
                 ln = rd(1)
@@ -103,8 +104,10 @@ class CommPort(object):
                 ln = rd(1)
                 data = rd(asint(ln))
                 chk = rd(1)
-                if (asint(b'*') + asint(ln) + bytesum(data) + asint(chk)) == 0:
-                    self._datacallback(data)
+                print('recd', data)
+                if (asint(b'*') + asint(ln) + bytesum(data) + asint(chk)) % 256 == 0:
+                    print('datacb')
+                    self._datacb(data)
     
     def _enum(self):
         """Keep track of the number of serial ports available.

@@ -19,8 +19,11 @@ checksum: 1 byte such that modulo 256 sum of entire msg (including '!', command,
 
 commands:
 C config
-H handshake
+H handshake (reset)
 V version
+G go
+S stop
+I individual read
 
 report format: '*' + length + data + checksum
 length: 1 byte for length of data only
@@ -143,9 +146,9 @@ void parseconfig(uint8_t len) {
     conf.trigtype = buf[ind++];
     if (conf.trigtype == 1) { // timed
         conf.trigprescale = buf[ind++];
-        conf.trigreload = buf[ind++] << 16;
+        conf.trigreload = buf[ind++];
         conf.trigreload |= buf[ind++] << 8;
-        conf.trigreload |= buf[ind++];
+        conf.trigreload |= buf[ind++] << 16;
     } else if (conf.trigtype == 2) { // pinchange
         conf.trigintsense = buf[ind++];
         conf.trigintpin = buf[ind++];
@@ -222,4 +225,20 @@ void recorddata(void) {
         }
     }
     queue_aggregate_bits();
+}
+
+extern "C" {
+
+void SysTick_Handler(void) {
+    recorddata();
+}
+
+void PORTA_IRQHandler(void) {
+    recorddata();
+}
+
+void PORTD_IRQHandler(void) {
+    recorddata();
+}
+
 }
