@@ -41,6 +41,11 @@ class ImageButton(ttk.Label):
 class Channel(ttk.Frame):
     chnums = {0}
     def __init__(self, master):
+        def changeicon(val, *args):
+            if val in anaset:
+                pinchoice['image'] = sineimg
+            else:
+                pinchoice['image'] = squareimg
         ttk.Frame.__init__(self, master)
         self.num = max(Channel.chnums) + 1
         Channel.chnums.add(self.num)
@@ -49,10 +54,18 @@ class Channel(ttk.Frame):
         nv.set('ch{}'.format(self.num))
         namefield = ttk.Entry(self, textvariable=nv, width=16, font=('TkTextFont', 0, 'bold'))
         namefield.focus()
-        adcomb = [x[0] for x in daq.board.analogs]
-        adcomb.extend(x[0] for x in daq.board.digitals if x not in adcomb)
-        pinchoice = tk.OptionMenu(self, pv, *adcomb)
-        pinchoice['width'] = 16
+        pinchoice = tk.OptionMenu(self, pv, '')
+        pinchoice['menu'].delete(0)
+        anaset = set()
+        for x in daq.board.analogs:
+            pinchoice['menu'].add_command(label=x[0], image=sineimg, command=tk._setit(pv, x[0], changeicon), compound='left')
+            anaset.add(x[0])
+        for x in daq.board.digitals:
+            if x[0] not in anaset:
+                pinchoice['menu'].add_command(label=x[0], image=squareimg, command=tk._setit(pv, x[0], changeicon), compound='left')
+        pinchoice['width'] = 150
+        pinchoice['compound'] = 'left'
+        pinchoice['image'] = sineimg
         delbutton = ImageButton(self, file='icons/remove.gif', command=self.remove)#tk.Button(self, text='X', command=self.remove, width=1)
         pv.set(daq.board.analogs[0][0])
         namefield.grid(row=0, column=0, sticky='ew')
@@ -71,6 +84,9 @@ daq = core.DataAcquisition()
 f = ttk.Frame(root)
 root.title('Data Acquisition')
 
+sineimg = tk.PhotoImage(file='icons/sinewave.gif')
+squareimg = tk.PhotoImage(file='icons/squarewave.gif')
+
 outfchs = ttk.Frame(f)
 outcchs = tk.Canvas(outfchs)
 controls = ttk.Frame(f)
@@ -88,7 +104,8 @@ def newchannel(e=None):
     outcchs.yview_moveto(1)
 def startrec(e=None):
     statelabel['text'] = 'Recording'
-    daq.config(...)
+    daq.config((TriggerTimed(secvar.get()) if triggertype.get() == 0 else TriggerPinchange(pinvar.get(), edgevar.get()),
+        AnalogReference(1), []))
     daq.go()
     #statelabel['fg'] = '#800000'
 def pausrec(e=None):

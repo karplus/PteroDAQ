@@ -37,7 +37,9 @@ class DataAcquisition(object):
             clkdiv, clkval = self.board.timer_calc(trigger.period)[1]
             confsend.extend(struct.pack('<BBL', 1, clkdiv, clkval)[:-1])
         elif isinstance(trigger, TriggerPinchange):
-            confsend.extend(struct.pack('<BBB', 2, trigger.sense, trigger.pin))
+            sense = next(x[1] for x in daq.board.intsense if x[0] == trigger.sense)
+            pin = next(x[1] for x in daq.board.eint if x[0] == trigger.pin)
+            confsend.extend(struct.pack('<BBB', 2, sense, pin))
         confsend.append(aref)
         for ch in channels:
             if isinstance(ch, AnalogChannel):
