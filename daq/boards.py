@@ -10,10 +10,10 @@ class Board(object):
 
 class ArduinoAVR(Board):
     intsense = (
-        ('Low', 0),
-        ('Change', 1),
-        ('Falling', 2),
-        ('Rising', 3))
+        ('rises', 3),
+        ('falls', 2),
+        ('changes', 1),
+        ('is low', 0))
     timestamp_res = 1e-6 # microsecond
     def timer_calc(self, period):
         # using Timer1
@@ -235,11 +235,11 @@ class FreedomKL25(Board):
         )) for pin in port[1])
     eint = tuple(x for x in digitals if x[0][1] in ('A', 'D'))
     intsense = (
-        ('Low', 0),
-        ('Rising', 1),
-        ('Falling', 2),
-        ('Change', 3),
-        ('High', 4))
+        ('rises', 1),
+        ('falls', 2),
+        ('changes', 3),
+        ('is low', 0),
+        ('is high', 4))
     aref = (
         ('Power', 1),
         ('External', 0))

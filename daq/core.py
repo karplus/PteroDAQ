@@ -19,6 +19,7 @@ class DataAcquisition(object):
     def __init__(self):
         self._data = []
         self._nextdata = 0
+        self.board = FreedomKL25()
     def connect(self, port, cb):
         self._conncall = cb
         self.comm = CommPort(port, self._parsedata, self._onconnect)
@@ -55,7 +56,6 @@ class DataAcquisition(object):
         return res
     def _onconnect(self):
         # todo: version and model info
-        self.board = FreedomKL25()
         self._conncall()
     def _parsedata(self, rd):
         ts = struct.unpack_from('<Q', rd)[0]
