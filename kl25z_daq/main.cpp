@@ -108,7 +108,14 @@ int main(void) {
                     sendresp(MSG("DAQ"));
                     break;
                 case 'M':
-                    // model info TODO
+                    adc_aref(1);
+                    uint16_t bandgap_read = adc_read(0x1B);
+                    uint8_t mresp[4];
+                    mresp[0] = 5;
+                    mresp[1] = 0;
+                    mresp[2] = bandgap_read & 0xFF;
+                    mresp[3] = bandgap_read >> 8;
+                    sendresp(mresp, 4);
                     break;
             }
         }

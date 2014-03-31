@@ -1,7 +1,7 @@
 import struct
 from datetime import datetime
-from comm import CommPort
-from boards import FreedomKL25
+from comm import CommPort, tobytes
+from boards import getboardinfo
 
 class TriggerTimed(object):
     def __init__(self, period):
@@ -20,7 +20,7 @@ class DataAcquisition(object):
     def __init__(self):
         self._data = []
         self._nextdata = 0
-        self.board = FreedomKL25()
+        #self.board = FreedomKL25()
     def connect(self, port, cb):
         self._conncall = cb
         self.comm = CommPort(port, self._parsedata, self._onconnect)
@@ -58,7 +58,13 @@ class DataAcquisition(object):
         res = self._data[self._nextdata:ld]
         self._nextdata = ld
         return res
-    def save(self, fn, notes):
+    def save(self, fn, notes, convvolts):
+        if convvolts:
+            scale = self.board.power_voltage / 65535
+            fmt = '.3f'
+        else:
+            scale = 1
+            fmt = 'd'
         with open(fn, 'w') as f:
             f.write('# PteroDAQ recording\n')
             f.write('# {:%H:%M:%S, %d %b %Y}\n'.format(datetime.now()))
@@ -74,10 +80,14 @@ class DataAcquisition(object):
             for ln in notes.split('\n'):
                 f.write('#   {}\n'.format(ln))
             for d in self._data:
-                f.write('\t'.join(str(int(x)) for x in d))
+                f.write('\t'.join(format(x*scale, fmt) if n else str(x) for n, x in enumerate(d)))
                 f.write('\n')
     def _onconnect(self):
         # todo: version and model info
+        version = self.comm.command('V')
+        model = self.comm.command('M')
+        self.board = getboardinfo(tobytes(model))
+        print(self.board, self.board.power_voltage)
         self._conncall()
     def _parsedata(self, rd):
         ts = struct.unpack_from('<Q', rd)[0]

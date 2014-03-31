@@ -1,3 +1,5 @@
+from struct import unpack_from
+
 def limit(x, a, b):
     if x < a:
         return a
@@ -30,7 +32,7 @@ class ArduinoAVR(Board):
             self._tmr_base = 1.0/8e6
         elif model[0] == 'b':
             self._tmr_base = 1.0/16e6
-        self.power_voltage = 1024/(int(model[1:4], 16)/1.1)
+        self.power_voltage = 1024/(unpack_from('<H', model, 1)[0]/1.1)
 
 class ArduinoStandard(ArduinoAVR):
     names = (
@@ -244,7 +246,7 @@ class FreedomKL25(Board):
         ('Power', 1),
         ('External', 0))
     timestamp_res = 1/48e6 # approximately 0.02 microseconds
-    power_voltage = 3.3
+    #power_voltage = 3.3
     def timer_calc(self, period):
         # using SysTick
         base = 1./48000000
@@ -258,12 +260,12 @@ class FreedomKL25(Board):
         actual = (reload + 1) * pr * base
         return actual, (n, reload)
     def setup(self, model):
-        pass
+        self.power_voltage = 65536/(unpack_from('<H', model)[0])
 
 allboards = [ArduinoStandard, ArduinoExtraAnalog, ArduinoMega, Arduino32u4, FreedomKL25]
 
 def getboardinfo(model):
-    boardnum = int(model[0:3], 16) - 1
-    board = allboards[boardnum]()
-    board.setup(model[3:])
+    boardnum = unpack_from('<H', model)[0]
+    board = allboards[boardnum-1]()
+    board.setup(model[2:])
     return board

@@ -2,6 +2,7 @@
 
 bool adc_calib(void) {
     uint16_t acc;
+    PMC->REGSC |= PMC_REGSC_BGBE_MASK;
     ADC0->CFG1 = 
         ADC_CFG1_ADICLK(1) | // half bus clock
         ADC_CFG1_MODE(3) | // sixteen-bit
