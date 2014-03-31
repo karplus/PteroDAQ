@@ -31,7 +31,7 @@ class DataAcquisition(object):
         self.comm.command('S')
     def config(self, conf):
         confsend = bytearray()
-        trigger, aref, channels = conf
+        trigger, aref, avg, channels = conf
         self.conf = conf
         self.channels = channels
         if isinstance(trigger, TriggerTimed):
@@ -43,6 +43,7 @@ class DataAcquisition(object):
             confsend.extend(struct.pack('<BBB', 2, sense, pin))
         arefnum = next(x[1] for x in self.board.aref if x[0] == aref)
         confsend.append(arefnum)
+        confsend.append({1: 0, 4: 4, 8: 5, 16: 6, 32: 7}[avg])
         for ch in channels:
             if isinstance(ch, AnalogChannel):
                 confsend.append(1)

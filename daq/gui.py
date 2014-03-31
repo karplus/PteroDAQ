@@ -193,7 +193,7 @@ def main(e=None):
 
     def makeconf():
         conf = (core.TriggerTimed(secvar.get()) if triggertype.get() == 0 else core.TriggerPinchange(pinvar.get(), edgevar.get()),
-            'Power',
+            'Power', avgvar.get(),
             [core.AnalogChannel(ch.namevar.get(), ch.pinvar.get(), (ch.pinvar.get() in daq.board.analog_signed))
                 if ch.pinvar.get() in anaset else
                 core.DigitalChannel(ch.namevar.get(), ch.pinvar.get())
@@ -266,8 +266,10 @@ def main(e=None):
     pinvar = tk.StringVar()
     edgevar = tk.StringVar()
     powervar = tk.IntVar()
+    avgvar = tk.IntVar()
     secvar.set(0.1)
     hzvar.set(10)
+    avgvar.set(32)
     secvar.trace('w', changetime)
     hzvar.trace('w', changetime)
     timetrigger = ttk.Radiobutton(triggers, text='Timed', variable=triggertype, value=0)
@@ -283,6 +285,9 @@ def main(e=None):
     pinvar.set(daq.board.eint[0][0])
     edgevar.set(daq.board.intsense[0][0])
     powerlabel = ttk.Checkbutton(triggers, text='Supply voltage: {:.4}'.format(daq.board.power_voltage), variable=powervar)
+    avglabel = ttk.Label(triggers, text='x Averaging')
+    avgfield = tk.OptionMenu(triggers, avgvar, *[1, 4, 8, 16, 32])
+    avgfield['width'] = 5
     triggerlabel.grid(row=0, column=0, columnspan=4)
     timetrigger.grid(row=1, column=0, columnspan=4)
     pintrigger.grid(row=3, column=0, columnspan=4)
@@ -293,6 +298,8 @@ def main(e=None):
     pinfield.grid(row=4, column=0, columnspan=2)
     edgefield.grid(row=4, column=2, columnspan=2)
     powerlabel.grid(row=5, column=0, columnspan=4)
+    avgfield.grid(row=6, column=1)
+    avglabel.grid(row=6, column=2, columnspan=2)
 
     noteslabel = ttk.Label(notes, text='Notes', font=('TkTextFont', 0, 'bold'))
     notesbox = tk.Text(notes, height=6, width=40, wrap='word', highlightthickness=0, font='TkTextFont')

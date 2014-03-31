@@ -46,6 +46,7 @@ struct Config {
     uint8_t trigintsense;
     uint8_t trigintpin;
     uint8_t arefchoice;
+    uint8_t avgana;
     uint8_t channelcount;
     uint8_t channeltypes[64];
     uint8_t channelchoices[64];
@@ -162,6 +163,7 @@ void parseconfig(uint8_t len) {
     }
     // aref
     conf.arefchoice = buf[ind++];
+    conf.avgana = buf[ind++];
     // channels
     while (ind < len) {
         conf.channeltypes[chnum] = buf[ind++];
@@ -206,6 +208,7 @@ void outputdata(void) {
 
 void startrunning(void) {
     adc_aref(conf.arefchoice);
+    adc_avg(conf.avgana);
     if (conf.trigtype == 1) {
         syst_trigger(conf.trigprescale, conf.trigreload);
     } else if (conf.trigtype == 2) {

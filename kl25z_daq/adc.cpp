@@ -40,6 +40,10 @@ void adc_aref(uint8_t choice) {
     ADC0->SC2 = ADC_SC2_REFSEL(choice); // 0 for external, 1 for vdda
 }
 
+void adc_avg(uint8_t choice) {
+    ADC0->SC3 = choice; // 0 for 1x, 4 for 4x, 5 for 8x, 6 for 16x, 7 for 32x averaging
+}
+
 uint16_t adc_read(uint8_t mux) {
 /* ADC mux values for chosen analog inputs (bit 6 = MUXSEL, bit 5 = DIFF, bits 4-0 = ADCH)
     00 E20
