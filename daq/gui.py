@@ -24,17 +24,23 @@ def changetime(varname, varind, acc):
         changerunning = False
         return
     if varname == str(secvar):
-        s = secvar.get()
-        if s == 0:
-            return
-        changerunning = True
-        hzvar.set(1/s)
+        try:
+            s = secvar.get()
+            if s == 0:
+                return
+            changerunning = True
+            hzvar.set(1/s)
+        except ValueError:
+            pass
     else:
-        h = hzvar.get()
-        if h == 0:
-            return
-        changerunning = True
-        secvar.set(1/h)
+        try:
+            h = hzvar.get()
+            if h == 0:
+                return
+            changerunning = True
+            secvar.set(1/h)
+        except ValueError:
+            pass
 
 class Separator(ttk.Frame):
     def __init__(self, master, orient='h'):
@@ -64,7 +70,7 @@ class Channel(tk.Frame):
         Channel.chnums.add(self.num)
         self.namevar = nv = tk.StringVar()
         self.pinvar = pv = tk.StringVar()
-        self.can = tk.Canvas(self, height=32, width=200)
+        self.can = tk.Canvas(self, height=33, width=200, highlightthickness=0)
         self.canline = self.can.create_line(0, 0, 0, 0)
         self.coords = []
         nv.set('ch{}'.format(self.num))
