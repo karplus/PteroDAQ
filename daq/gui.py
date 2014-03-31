@@ -1,7 +1,13 @@
-import tkinter as tk
-from tkinter import messagebox as tkm
-from tkinter import filedialog as tkf
-from tkinter import ttk
+try:
+    import tkinter as tk
+    from tkinter import messagebox as tkm
+    from tkinter import filedialog as tkf
+    from tkinter import ttk
+except ImportError:
+    import Tkinter as tk
+    import tkMessageBox as tkm
+    import tkFileDialog as tkf
+    import ttk
 import core
 from getports import ports
 from comm import tostr

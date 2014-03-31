@@ -18,7 +18,17 @@ if version_info[0] == 3:
         return x.decode('latin1')
 else:
     # Python 2
-    raise Exception('py2 support pending')
+    #raise Exception('py2 support pending')
+    def tobytes(x):
+        return x
+    def asbyte(x):
+        return chr(x)
+    def asint(x):
+        return ord(x)
+    def bytesum(x):
+        return sum(ord(c) for c in x)
+    def tostr(x):
+        return x
 
 class CommPort(object):
     BAUDRATE = 500000 # may NOT be 1200, must match other end
@@ -72,7 +82,8 @@ class CommPort(object):
     
     def command(self, c, d=''):
         mbase = b'!' + tobytes(c) + asbyte(len(d)) + tobytes(d)
-        msg = mbase + asbyte(-bytesum(mbase) % 256)
+        print('mbase', mbase)
+        msg = mbase + asbyte(-bytesum(bytes(mbase)) % 256)
         self.ser.write(msg)
         self._respavail.wait()
         self._respavail.clear()

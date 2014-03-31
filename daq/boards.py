@@ -32,7 +32,7 @@ class ArduinoAVR(Board):
             self._tmr_base = 1.0/8e6
         elif model[0] == 'b':
             self._tmr_base = 1.0/16e6
-        self.power_voltage = 1024/(unpack_from('<H', model, 1)[0]/1.1)
+        self.power_voltage = 1024./(unpack_from('<H', model, 1)[0]/1.1)
 
 class ArduinoStandard(ArduinoAVR):
     names = (
@@ -260,7 +260,7 @@ class FreedomKL25(Board):
         actual = (reload + 1) * pr * base
         return actual, (n, reload)
     def setup(self, model):
-        self.power_voltage = 65536/(unpack_from('<H', model)[0])
+        self.power_voltage = 65536./(unpack_from('<H', model)[0])
 
 allboards = [ArduinoStandard, ArduinoExtraAnalog, ArduinoMega, Arduino32u4, FreedomKL25]
 

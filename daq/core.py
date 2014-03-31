@@ -1,6 +1,6 @@
 import struct
 from datetime import datetime
-from comm import CommPort, tobytes
+from comm import CommPort, tobytes, tostr
 from boards import getboardinfo
 
 class TriggerTimed(object):
@@ -50,7 +50,7 @@ class DataAcquisition(object):
             elif isinstance(ch, DigitalChannel):
                 confsend.append(2)
                 confsend.append(next(x[1] for x in self.board.digitals if x[0] == ch.pin))
-        self.comm.command('C', str(confsend, encoding='latin1'))
+        self.comm.command('C', tostr(confsend))
     def oneread(self):
         self.comm.command('I')
     def new_data(self):
