@@ -58,6 +58,9 @@ class DataAcquisition(object):
         res = self._data[self._nextdata:ld]
         self._nextdata = ld
         return res
+    def clear(self):
+        self._data = []
+        self._nextdata = 0
     def save(self, fn, notes, convvolts):
         if convvolts:
             scale = self.board.power_voltage / 65535
@@ -83,7 +86,7 @@ class DataAcquisition(object):
                 f.write('\t'.join(format(x*scale, fmt) if n else str(x) for n, x in enumerate(d)))
                 f.write('\n')
     def _onconnect(self):
-        # todo: version and model info
+        # todo: version check
         version = self.comm.command('V')
         model = self.comm.command('M')
         self.board = getboardinfo(tobytes(model))

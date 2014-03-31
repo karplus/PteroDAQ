@@ -117,6 +117,9 @@ class Channel(tk.Frame):
                 c.append(32-d)
         #print(c)
         self.can.coords(self.canline, *c)
+    def clear(self):
+        self.coords = []
+        self.can.coords(self.canline, 0, 0, 0, 0)
 
 class PortSelect(object):
     def __init__(self, win, cb):
@@ -163,6 +166,8 @@ def main(e=None):
     global squareimg
     global secvar
     global hzvar
+    global channels
+    global outcchs
     
     f = ttk.Frame(root)
     root.title('Data Acquisition')
@@ -211,6 +216,9 @@ def main(e=None):
         daq.oneread()
     def clearreads(e=None):
         if tkm.askyesno(message='Clear all current readings?', icon='question'):
+            daq.clear()
+            for ch in channels.winfo_children():
+                ch.clear()
             countlabel['text'] = '0'
     def savefile(e=None):
         pauserec()
