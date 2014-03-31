@@ -11,6 +11,10 @@ except ImportError:
 import core
 from getports import ports
 from comm import tostr
+import os.path
+
+absfile = os.path.abspath(__file__)
+maindir = os.path.normpath(os.path.join(absfile, '../..'))
 
 changerunning = False
 
@@ -76,7 +80,7 @@ class Channel(tk.Frame):
         pinchoice['width'] = 150
         pinchoice['compound'] = 'left'
         pinchoice['image'] = sineimg
-        delbutton = ImageButton(self, file='icons/remove.gif', command=self.remove)#tk.Button(self, text='X', command=self.remove, width=1)
+        delbutton = ImageButton(self, file=os.path.join(maindir, 'daq/icons/remove.gif'), command=self.remove)
         pv.set(daq.board.analogs[0][0])
         namefield.grid(row=0, column=0, sticky='ew')
         pinchoice.grid(row=0, column=1)
@@ -102,7 +106,6 @@ class Channel(tk.Frame):
                 c.append(n)
                 c.append(32-x)
         else:
-            # TODO
             del c[:-400+2*len(ds)]
             if c[0]:
                 for n in range(0, len(c), 2):
@@ -164,8 +167,8 @@ def main(e=None):
 
     anaset = {x[0] for x in daq.board.analogs}
 
-    sineimg = tk.PhotoImage(file='icons/sinewave.gif')
-    squareimg = tk.PhotoImage(file='icons/squarewave.gif')
+    sineimg = tk.PhotoImage(file=os.path.join(maindir, 'daq/icons/sinewave.gif'))
+    squareimg = tk.PhotoImage(file=os.path.join(maindir, 'daq/icons/squarewave.gif'))
 
     outfchs = ttk.Frame(f)
     outcchs = tk.Canvas(outfchs)
@@ -204,7 +207,6 @@ def main(e=None):
     def oneread(e=None):
         daq.config(makeconf())
         daq.oneread()
-        #countlabel['text'] = int(countlabel['text'])+1
     def clearreads(e=None):
         if tkm.askyesno(message='Clear all current readings?', icon='question'):
             countlabel['text'] = '0'
@@ -216,11 +218,11 @@ def main(e=None):
 
     statelabel = ttk.Label(controls, text='Paused', font=('TkTextFont', 0, 'bold'), width=12)
     countlabel = ttk.Label(controls, text='0')
-    recbutton = ImageButton(controls, file='icons/record.gif', command=startrec)
-    pausebutton = ImageButton(controls, file='icons/pause.gif', command=pauserec)
-    addchbutton = ImageButton(controls, file='icons/plus.gif', command=newchannel)
-    singlebutton = ImageButton(controls, file='icons/one.gif', command=oneread)
-    clearbutton = ImageButton(controls, file='icons/trash.gif', command=clearreads)
+    recbutton = ImageButton(controls, file=os.path.join(maindir, 'daq/icons/record.gif'), command=startrec)
+    pausebutton = ImageButton(controls, file=os.path.join(maindir, 'daq/icons/pause.gif'), command=pauserec)
+    addchbutton = ImageButton(controls, file=os.path.join(maindir, 'daq/icons/plus.gif'), command=newchannel)
+    singlebutton = ImageButton(controls, file=os.path.join(maindir, 'daq/icons/one.gif'), command=oneread)
+    clearbutton = ImageButton(controls, file=os.path.join(maindir, 'daq/icons/trash.gif'), command=clearreads)
     savebutton = ttk.Button(controls, command=savefile, text='Save')
     reclabel = ttk.Label(controls, text='Record')
     pauselabel = ttk.Label(controls, text='Pause')
@@ -287,7 +289,7 @@ def main(e=None):
             delta /= 120.0
         outcchs.yview_scroll(delta, 'units')
 
-    addchbutton = ImageButton(controls, file='icons/plus.gif', command=newchannel)
+    addchbutton = ImageButton(controls, file=os.path.join(maindir, 'daq/icons/plus.gif'), command=newchannel)
     addchbutton.grid(row=0, column=3)
     addchlabel = ttk.Label(controls, text='Add Channel')
     addchlabel.grid(row=1, column=3)
@@ -296,11 +298,11 @@ def main(e=None):
     outcchs['yscrollcommand'] = outbchs.set
 
     controls.grid(row=0, column=0, columnspan=3, sticky='ew', padx=2, pady=2)
-    ttk.Separator(f, orient='horizontal').grid(row=1, column=0, columnspan=3, sticky='ew')#, padx=2, pady=2)
+    ttk.Separator(f, orient='horizontal').grid(row=1, column=0, columnspan=3, sticky='ew')
     triggers.grid(row=2, column=0)
-    ttk.Separator(f, orient='vertical').grid(row=2, column=1, sticky='ns')#, padx=2, pady=2)
+    ttk.Separator(f, orient='vertical').grid(row=2, column=1, sticky='ns')
     notes.grid(row=2, column=2)
-    ttk.Separator(f, orient='horizontal').grid(row=3, column=0, columnspan=3, sticky='ew')#, padx=2, pady=2)
+    ttk.Separator(f, orient='horizontal').grid(row=3, column=0, columnspan=3, sticky='ew')
     outcchs.grid(row=0, column=0, sticky='nsew')
     outbchs.grid(row=0, column=1, sticky='nse')
     outfchs.grid(row=4, column=0, columnspan=3, sticky='nsew')
@@ -312,7 +314,6 @@ def main(e=None):
         newdat = daq.new_data()
         countlabel['text'] = int(countlabel['text']) + len(newdat)
         if newdat:
-            #print(newdat)
             for n, ch in enumerate(channels.winfo_children(), 1):
                 ch.add_data([dat[n] for dat in newdat])
         root.after(100, update_data)
@@ -322,9 +323,6 @@ def main(e=None):
     root.tk.createcommand('scrollcan', scrollcan)
     root.bind_all('<MouseWheel>', 'scrollcan %D')
     root.after(100, update_data)
-
-    #daq.connect('/dev/tty.usbmodemfa121', lambda: print('Ready.'))
-
 
 root = tk.Tk()
 daq = core.DataAcquisition()
