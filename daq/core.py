@@ -1,4 +1,5 @@
 import struct
+from datetime import datetime
 from comm import CommPort
 from boards import FreedomKL25
 
@@ -9,11 +10,11 @@ class TriggerPinchange(object):
     def __init__(self, pin, sense):
         self.pin, self.sense = pin, sense
 class AnalogChannel(object):
-    def __init__(self, mux):
-        self.mux = mux
+    def __init__(self, name, pin):
+        self.name, self.pin = name, pin
 class DigitalChannel(object):
-    def __init__(self, pin):
-        self.pin = pin
+    def __init__(self, name, pin):
+        self.name, self.pin = name, pin
 
 class DataAcquisition(object):
     def __init__(self):
@@ -40,14 +41,15 @@ class DataAcquisition(object):
             sense = next(x[1] for x in self.board.intsense if x[0] == trigger.sense)
             pin = next(x[1] for x in self.board.eint if x[0] == trigger.pin)
             confsend.extend(struct.pack('<BBB', 2, sense, pin))
-        confsend.append(aref)
+        arefnum = next(x[1] for x in self.board.aref if x[0] == aref)
+        confsend.append(arefnum)
         for ch in channels:
             if isinstance(ch, AnalogChannel):
                 confsend.append(1)
-                confsend.append(ch.mux)
+                confsend.append(next(x[1] for x in self.board.analogs if x[0] == ch.pin))
             elif isinstance(ch, DigitalChannel):
                 confsend.append(2)
-                confsend.append(ch.pin)
+                confsend.append(next(x[1] for x in self.board.digitals if x[0] == ch.pin))
         self.comm.command('C', str(confsend, encoding='latin1'))
     def oneread(self):
         self.comm.command('I')
@@ -56,8 +58,24 @@ class DataAcquisition(object):
         res = self._data[self._nextdata:ld]
         self._nextdata = ld
         return res
-    def save(self, fn):
-        ...
+    def save(self, fn, notes):
+        with open(fn, 'w') as f:
+            f.write('# PteroDAQ recording\n')
+            f.write('# {:%H:%M:%S, %d %b %Y}\n'.format(datetime.now()))
+            if isinstance(self.conf[0], TriggerTimed):
+                f.write('# Recording every {} sec ({} Hz)\n'.format(self.conf[0].period, 1./self.conf[0].period))
+            elif isinstance(self.conf[0], TriggerPinchange):
+                f.write('# Recording when {} {}\n'.format(self.conf[0].pin, self.conf[0].sense))
+            f.write('# Analog reference is {}\n'.format(self.conf[1]))
+            f.write('# Recording channels:\n')
+            for ch in self.channels:
+                f.write('#   {} : {}\n'.format(ch.name, ch.pin))
+            f.write('# Notes:\n')
+            for ln in notes.split('\n'):
+                f.write('#   {}\n'.format(ln))
+            for d in self._data:
+                f.write('\t'.join(str(int(x)) for x in d))
+                f.write('\n')
     def _onconnect(self):
         # todo: version and model info
         self._conncall()

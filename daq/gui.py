@@ -126,11 +126,11 @@ outcchs.create_window(0, 0, anchor='nw', window=channels)
 
 def makeconf():
     conf = (core.TriggerTimed(secvar.get()) if triggertype.get() == 0 else core.TriggerPinchange(pinvar.get(), edgevar.get()),
-        1,
-        [core.AnalogChannel(next(x[1] for x in daq.board.analogs if x[0] == n))
-            if n in anaset else
-            core.DigitalChannel(next(x[1] for x in daq.board.digitals if x[0] == n))
-            for n in (ch.pinvar.get() for ch in channels.winfo_children())])
+        'Power',
+        [core.AnalogChannel(ch.namevar.get(), ch.pinvar.get())
+            if ch.pinvar.get() in anaset else
+            core.DigitalChannel(ch.namevar.get(), ch.pinvar.get())
+            for ch in channels.winfo_children()])
     return conf
 def newchannel(e=None):
     ch = Channel(channels)
@@ -146,7 +146,7 @@ def startrec(e=None):
     daq.config(conf)
     daq.go()
     #statelabel['fg'] = '#800000'
-def pausrec(e=None):
+def pauserec(e=None):
     statelabel['text'] = 'Paused'
     daq.stop()
     #statelabel['fg'] = '#000080'
@@ -159,18 +159,18 @@ def clearreads(e=None):
         countlabel['text'] = '0'
 def savefile(e=None):
     pauserec()
-    fn = tkf.asksaveasfilename(mode='w', defaultextension='.txt')
+    fn = tkf.asksaveasfilename(defaultextension='.txt')
     if fn is not None:
-        daq.save(fn)
+        daq.save(fn, notesbox.get('1.0', 'end'))
 
 statelabel = ttk.Label(controls, text='Paused', font=('TkTextFont', 0, 'bold'), width=12)
 countlabel = ttk.Label(controls, text='0')
 recbutton = ImageButton(controls, file='icons/record.gif', command=startrec)
-pausebutton = ImageButton(controls, file='icons/pause.gif', command=pausrec)
+pausebutton = ImageButton(controls, file='icons/pause.gif', command=pauserec)
 addchbutton = ImageButton(controls, file='icons/plus.gif', command=newchannel)
 singlebutton = ImageButton(controls, file='icons/one.gif', command=oneread)
 clearbutton = ImageButton(controls, file='icons/trash.gif', command=clearreads)
-savebutton = ttk.Button(controls, command=savefile)
+savebutton = ttk.Button(controls, command=savefile, text='Save')
 reclabel = ttk.Label(controls, text='Record')
 pauselabel = ttk.Label(controls, text='Pause')
 addchlabel = ttk.Label(controls, text='Add Channel')
