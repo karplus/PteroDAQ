@@ -227,7 +227,7 @@ class FreedomKL25(Board):
         ('Diff/PE22-PE23', 35),
         ('Temperature', 26),
         ('Bandgap', 27),
-        ('AREF', 29)) # todo: internal differentials
+        ('Aref', 29)) # todo: internal differentials
     digitals = tuple(('P{}{}'.format(port[0], pin), (n * 32 + pin)) for n, port in enumerate((
             ('A', (1, 2, 4, 5, 12, 13, 14, 15, 16, 17)),
             ('B', (0, 1, 2, 3, 8, 9, 10, 11)),
@@ -245,6 +245,9 @@ class FreedomKL25(Board):
     aref = (
         ('Power', 1),
         ('External', 0))
+    analog_signed = (
+        'Diff/PE20-PE21',
+        'Diff/PE22-PE23')
     timestamp_res = 1/48e6 # approximately 0.02 microseconds
     #power_voltage = 3.3
     def timer_calc(self, period):

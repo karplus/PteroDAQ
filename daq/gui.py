@@ -96,6 +96,8 @@ class Channel(tk.Frame):
         del ds[:-200]
         if self.pinvar.get() in anaset:
             ds = [d/2048 for d in ds]
+            if self.pinvar.get() in daq.board.analog_signed:
+                ds = [d+16 for d in ds]
         else:
             ds = [31*d for d in ds]
         c = self.coords
@@ -181,7 +183,7 @@ def main(e=None):
     def makeconf():
         conf = (core.TriggerTimed(secvar.get()) if triggertype.get() == 0 else core.TriggerPinchange(pinvar.get(), edgevar.get()),
             'Power',
-            [core.AnalogChannel(ch.namevar.get(), ch.pinvar.get())
+            [core.AnalogChannel(ch.namevar.get(), ch.pinvar.get(), (ch.pinvar.get() in daq.board.analog_signed))
                 if ch.pinvar.get() in anaset else
                 core.DigitalChannel(ch.namevar.get(), ch.pinvar.get())
                 for ch in channels.winfo_children()])
@@ -196,7 +198,7 @@ def main(e=None):
     def startrec(e=None):
         statelabel['text'] = 'Recording'
         conf = makeconf()
-        print(conf)
+        #print(conf)
         daq.config(conf)
         daq.go()
         #statelabel['fg'] = '#800000'
@@ -314,6 +316,7 @@ def main(e=None):
         newdat = daq.new_data()
         countlabel['text'] = int(countlabel['text']) + len(newdat)
         if newdat:
+            #print(newdat)
             for n, ch in enumerate(channels.winfo_children(), 1):
                 ch.add_data([dat[n] for dat in newdat])
         root.after(100, update_data)

@@ -82,7 +82,7 @@ class CommPort(object):
     
     def command(self, c, d=''):
         mbase = b'!' + tobytes(c) + asbyte(len(d)) + tobytes(d)
-        print('mbase', mbase)
+        #print('mbase', mbase)
         msg = mbase + asbyte(-bytesum(bytes(mbase)) % 256)
         self.ser.write(msg)
         self._respavail.wait()

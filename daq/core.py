@@ -10,8 +10,8 @@ class TriggerPinchange(object):
     def __init__(self, pin, sense):
         self.pin, self.sense = pin, sense
 class AnalogChannel(object):
-    def __init__(self, name, pin):
-        self.name, self.pin = name, pin
+    def __init__(self, name, pin, signed=False):
+        self.name, self.pin, self.signed = name, pin, signed
 class DigitalChannel(object):
     def __init__(self, name, pin):
         self.name, self.pin = name, pin
@@ -87,7 +87,7 @@ class DataAcquisition(object):
         version = self.comm.command('V')
         model = self.comm.command('M')
         self.board = getboardinfo(tobytes(model))
-        print(self.board, self.board.power_voltage)
+        #print(self.board, self.board.power_voltage)
         self._conncall()
     def _parsedata(self, rd):
         ts = struct.unpack_from('<Q', rd)[0]
@@ -97,7 +97,7 @@ class DataAcquisition(object):
         digcount = 0
         for n, ch in enumerate(self.channels, 1):
             if isinstance(ch, AnalogChannel):
-                results[n] = struct.unpack_from('<H', rd, pos)[0]
+                results[n] = struct.unpack_from('<h' if ch.signed else '<H', rd, pos)[0]
                 pos += 2
             elif isinstance(ch, DigitalChannel):
                 digcount += 1
