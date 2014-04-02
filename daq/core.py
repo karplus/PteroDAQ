@@ -20,6 +20,7 @@ class DataAcquisition(object):
     def __init__(self):
         self._data = []
         self._nextdata = 0
+        self._timeoffset = None
     def connect(self, port, cb):
         self._conncall = cb
         self.comm = CommPort(port, self._parsedata, self._onconnect)
@@ -76,6 +77,12 @@ class DataAcquisition(object):
             elif isinstance(self.conf[0], TriggerPinchange):
                 f.write('# Recording when {} {}\n'.format(self.conf[0].pin, self.conf[0].sense))
             f.write('# Analog reference is {}\n'.format(self.conf[1]))
+            if self.conf[2] > 1:
+                f.write('# Averaging {} readings together\n'.format(self.conf[2]))
+            if convvolts:
+                f.write('# Scale: 0 to {:.4f} volts\n'.format(self.board.power_voltage))
+            else:
+                f.write('# Scale: 0 to 65536\n')
             f.write('# Recording channels:\n')
             for ch in self.channels:
                 f.write('#   {} : {}\n'.format(ch.name, ch.pin))
@@ -93,6 +100,9 @@ class DataAcquisition(object):
         self._conncall()
     def _parsedata(self, rd):
         ts = struct.unpack_from('<Q', rd)[0]
+        if self._timeoffset is None:
+            self._timeoffset = ts
+        ts -= self._timeoffset
         digbuf = bytearray()
         results = [ts] + [None] * len(self.channels)
         pos = 8
