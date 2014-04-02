@@ -12,13 +12,18 @@ import core
 from getports import ports
 from comm import tostr
 import os.path
+import sys
 
-absfile = os.path.abspath(__file__)
-maindir = os.path.normpath(os.path.join(absfile, '../..'))
+maindir = os.path.normpath(os.path.join(os.path.abspath(__file__), '../..'))
+
+iswindows = sys.platform in ('win32', 'cygwin')
 
 changerunning = False
 
 def changetime(varname, varind, acc):
+    """Update the seconds or hertz field
+    when the other one is changed.
+    """
     global changerunning
     if changerunning:
         changerunning = False
@@ -42,14 +47,10 @@ def changetime(varname, varind, acc):
         except ValueError:
             pass
 
-class Separator(ttk.Frame):
-    def __init__(self, master, orient='h'):
-        if orient.startswith('h'):
-            ttk.Frame.__init__(self, master, height=2, bd=1, relief='sunken')
-        elif orient.startswith('v'):
-            ttk.Frame.__init__(self, master, width=2, bd=1, relief='sunken')
-
 class ImageButton(ttk.Label):
+    """A button consisting of an image.
+    Has no border except for that provided by the image.
+    """
     def __init__(self, master, file, command=None):
         img = tk.PhotoImage(file=file)
         ttk.Label.__init__(self, master, image=img)
@@ -57,8 +58,10 @@ class ImageButton(ttk.Label):
         if command is not None:
             self.bind('<ButtonRelease-1>', command)
 
-class Channel(tk.Frame):
+class Channel(ttk.Frame):
     chnums = {0}
+    slwidth = 200
+    slheight = 50
     def __init__(self, master):
         def changeicon(val, *args):
             if val in anaset:
@@ -70,7 +73,7 @@ class Channel(tk.Frame):
         Channel.chnums.add(self.num)
         self.namevar = nv = tk.StringVar()
         self.pinvar = pv = tk.StringVar()
-        self.can = tk.Canvas(self, height=33, width=200, highlightthickness=0)
+        self.can = tk.Canvas(self, height=self.slheight, width=self.slwidth, highlightthickness=0)
         self.canline = self.can.create_line(0, 0, 0, 0)
         self.coords = []
         nv.set('ch{}'.format(self.num))
@@ -83,7 +86,7 @@ class Channel(tk.Frame):
         for x in daq.board.digitals:
             if x[0] not in anaset:
                 pinchoice['menu'].add_command(label=x[0], image=squareimg, command=tk._setit(pv, x[0], changeicon), compound='left')
-        pinchoice['width'] = 150
+        pinchoice['width'] = 100 if iswindows else 150
         pinchoice['compound'] = 'left'
         pinchoice['image'] = sineimg
         delbutton = ImageButton(self, file=os.path.join(maindir, 'daq/icons/remove.gif'), command=self.remove)
@@ -99,29 +102,26 @@ class Channel(tk.Frame):
         channels.update_idletasks()
         outcchs['scrollregion'] = (0,0,channels.winfo_width(), channels.winfo_height())
     def add_data(self, ds):
-        del ds[:-200]
+        del ds[:-self.slwidth]
         if self.pinvar.get() in anaset:
-            ds = [d/2048 for d in ds]
+            ds = [d/65536 for d in ds]
             if self.pinvar.get() in daq.board.analog_signed:
-                ds = [d+16 for d in ds]
-        else:
-            ds = [31*d for d in ds]
+                ds = [d+0.5 for d in ds]
+        ds = [(self.slheight-1)*d for d in ds]
         c = self.coords
-        #print(c)
         if not c:
-            c[:] = [0, 32-ds[0]]
+            c[:] = [0, self.slheight-1-ds[0]]
             for n, x in enumerate(ds):
                 c.append(n)
-                c.append(32-x)
+                c.append(self.slheight-1-x)
         else:
-            del c[:-400+2*len(ds)]
+            del c[:-(self.slwidth+len(ds))*2]
             if c[0]:
                 for n in range(0, len(c), 2):
                     c[n] -= len(ds)
             for n, d in enumerate(ds, c[-2]+1):
                 c.append(n)
-                c.append(32-d)
-        #print(c)
+                c.append(self.slheight-1-d)
         self.can.coords(self.canline, *c)
     def clear(self):
         self.coords = []
@@ -161,7 +161,7 @@ class PortSelect(object):
         self.aft = portlist.after(500, self.updateports)
 
 def startmain():
-    root.event_generate('<<Start-Main>>')
+    root.after_idle(main)
 
 def doconn(port):
     daq.connect(port, startmain)
@@ -177,7 +177,6 @@ def main(e=None):
     
     f = ttk.Frame(root)
     root.title('Data Acquisition')
-
     anaset = {x[0] for x in daq.board.analogs}
 
     sineimg = tk.PhotoImage(file=os.path.join(maindir, 'daq/icons/sinewave.gif'))
@@ -209,14 +208,11 @@ def main(e=None):
     def startrec(e=None):
         statelabel['text'] = 'Recording'
         conf = makeconf()
-        #print(conf)
         daq.config(conf)
         daq.go()
-        #statelabel['fg'] = '#800000'
     def pauserec(e=None):
         statelabel['text'] = 'Paused'
         daq.stop()
-        #statelabel['fg'] = '#000080'
     def oneread(e=None):
         daq.config(makeconf())
         daq.oneread()
@@ -270,6 +266,7 @@ def main(e=None):
     secvar.set(0.1)
     hzvar.set(10)
     avgvar.set(32)
+    powervar.set(1)
     secvar.trace('w', changetime)
     hzvar.trace('w', changetime)
     timetrigger = ttk.Radiobutton(triggers, text='Timed', variable=triggertype, value=0)
@@ -278,8 +275,10 @@ def main(e=None):
     hzlabel = ttk.Label(triggers, text='Hz')
     secfield = ttk.Entry(triggers, textvariable=secvar, width=8)
     hzfield = ttk.Entry(triggers, textvariable=hzvar, width=8)
-    pinfield = tk.OptionMenu(triggers, pinvar, *(x[0] for x in daq.board.eint))
-    edgefield = tk.OptionMenu(triggers, edgevar, *(x[0] for x in daq.board.intsense))
+    #pinfield = tk.OptionMenu(triggers, pinvar, *(x[0] for x in daq.board.eint))
+    #edgefield = tk.OptionMenu(triggers, edgevar, *(x[0] for x in daq.board.intsense))
+    pinfield = ttk.Combobox(triggers, textvariable=pinvar, values=[x[0] for x in daq.board.eint])
+    edgefield = ttk.Combobox(triggers, textvariable=edgevar, values=[x[0] for x in daq.board.intsense])
     pinfield['width'] = 8
     edgefield['width'] = 8
     pinvar.set(daq.board.eint[0][0])
@@ -302,15 +301,15 @@ def main(e=None):
     avglabel.grid(row=6, column=2, columnspan=2)
 
     noteslabel = ttk.Label(notes, text='Notes', font=('TkTextFont', 0, 'bold'))
-    notesbox = tk.Text(notes, height=6, width=40, wrap='word', highlightthickness=0, font='TkTextFont')
+    notesbox = tk.Text(notes, height=6, width=60 if iswindows else 40, wrap='word', highlightthickness=0, font='TkTextFont')
     noteslabel.grid(row=0, column=0)
     notesbox.grid(row=1, column=0)
 
     def scrollcan(delta):
         delta = -int(delta)
         if delta >= 120 or delta <= -120:
-            delta /= 120.0
-        outcchs.yview_scroll(delta, 'units')
+            delta /= 120
+        outcchs.yview_scroll(int(delta), 'units')
 
     addchbutton = ImageButton(controls, file=os.path.join(maindir, 'daq/icons/plus.gif'), command=newchannel)
     addchbutton.grid(row=0, column=3)
@@ -330,18 +329,16 @@ def main(e=None):
     outbchs.grid(row=0, column=1, sticky='nse')
     outfchs.grid(row=4, column=0, columnspan=3, sticky='nsew')
     outfchs.columnconfigure(0, weight=1)
-    #channels.grid(row=4, column=0, columnspan=3, sticky='ew')
     f.pack(fill='y', expand=True)
 
     def update_data():
         newdat = daq.new_data()
         countlabel['text'] = int(countlabel['text']) + len(newdat)
         if newdat:
-            #print(newdat)
             for n, ch in enumerate(channels.winfo_children(), 1):
                 ch.add_data([dat[n] for dat in newdat])
         root.after(100, update_data)
-
+    
     root.update_idletasks()
     root.resizable(False, False)
     root.tk.createcommand('scrollcan', scrollcan)
@@ -352,7 +349,6 @@ root = tk.Tk()
 daq = core.DataAcquisition()
 
 ps = PortSelect(root, doconn)
-root.bind('<<Start-Main>>', main)
 
 root.mainloop()
 

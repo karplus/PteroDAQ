@@ -20,7 +20,6 @@ class DataAcquisition(object):
     def __init__(self):
         self._data = []
         self._nextdata = 0
-        #self.board = FreedomKL25()
     def connect(self, port, cb):
         self._conncall = cb
         self.comm = CommPort(port, self._parsedata, self._onconnect)
@@ -65,7 +64,7 @@ class DataAcquisition(object):
     def save(self, fn, notes, convvolts):
         if convvolts:
             scale = self.board.power_voltage / 65535
-            fmt = '.3f'
+            fmt = '.6f'
         else:
             scale = 1
             fmt = 'd'
@@ -91,7 +90,6 @@ class DataAcquisition(object):
         version = self.comm.command('V')
         model = self.comm.command('M')
         self.board = getboardinfo(tobytes(model))
-        #print(self.board, self.board.power_voltage)
         self._conncall()
     def _parsedata(self, rd):
         ts = struct.unpack_from('<Q', rd)[0]
