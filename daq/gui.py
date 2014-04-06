@@ -62,6 +62,7 @@ class ImageButton(ttk.Label):
 
 class Channel(ttk.Frame):
     chnums = {0}
+    byloc = []
     slwidth = 200
     slheight = 50
     def __init__(self, master):
@@ -74,8 +75,12 @@ class Channel(ttk.Frame):
         self.downsamp = 1
         self.menu = tk.Menu(self, tearoff=False)
         self.menu.add_command(label='Downsample', command=self.req_downsample)
+        self.menu.add_command(label='Move Up', command=self.move_up)
+        self.menu.add_command(label='Move Down', command=self.move_down)
+        self.menu.add_command(label='Remove', command=self.remove)
         self.num = max(Channel.chnums) + 1
         Channel.chnums.add(self.num)
+        Channel.byloc.append(self)
         self.namevar = nv = tk.StringVar()
         self.pinvar = pv = tk.StringVar()
         self.can = tk.Canvas(self, height=self.slheight, width=self.slwidth, highlightthickness=0)
@@ -94,17 +99,19 @@ class Channel(ttk.Frame):
         pinchoice['width'] = 100 if iswindows else 150
         pinchoice['compound'] = 'left'
         pinchoice['image'] = sineimg
-        delbutton = ImageButton(self, file=os.path.join(maindir, 'daq/icons/remove.gif'), command=self.remove)
+        #delbutton = ImageButton(self, file=os.path.join(maindir, 'daq/icons/remove.gif'), command=self.remove)
         optbutton = ImageButton(self, file=os.path.join(maindir, 'daq/icons/options.gif'), command=self.show_options)
         pv.set(daq.board.analogs[0][0])
         namefield.grid(row=0, column=0, sticky='ew')
         pinchoice.grid(row=0, column=1)
-        delbutton.grid(row=0, column=2)
-        optbutton.grid(row=0, column=3)
+        #delbutton.grid(row=0, column=2)
+        optbutton.grid(row=0, column=2)
         self.can.grid(row=0, column=4)
-        ttk.Separator(self, orient='horizontal').grid(row=1, column=0, columnspan=5, sticky='ew', padx=2, pady=2)
+        ttk.Separator(self, orient='horizontal').grid(row=1, column=0, columnspan=4, sticky='ew', padx=2, pady=2)
     def remove(self, e=None):
+        print('remove called')
         Channel.chnums.discard(self.num)
+        Channel.byloc.remove(self)
         self.destroy()
         channels.update_idletasks()
         outcchs['scrollregion'] = (0,0,channels.winfo_width(), channels.winfo_height())
@@ -139,6 +146,29 @@ class Channel(ttk.Frame):
         res = tks.askinteger('Downsampling', 'Downsample channel {} by'.format(self.namevar.get()), initialvalue=self.downsamp, minvalue=1)
         if res is not None:
             self.downsamp = res
+    def move_up(self, e=None):
+        ind = Channel.byloc.index(self)
+        if ind == 0:
+            return
+        sib = Channel.byloc[ind-1]
+        Channel.byloc[ind] = sib
+        Channel.byloc[ind-1] = self
+        for ch in Channel.byloc:
+            ch.pack_forget()
+        for ch in Channel.byloc:
+            ch.pack()
+    def move_down(self, e=None):
+        ind = Channel.byloc.index(self)
+        if ind == len(Channel.byloc)-1:
+            return
+        sib = Channel.byloc[ind+1]
+        Channel.byloc[ind] = sib
+        Channel.byloc[ind+1] = self
+        for ch in Channel.byloc:
+            ch.pack_forget()
+        for ch in Channel.byloc:
+            ch.pack()
+        
 
 class PortSelect(object):
     def __init__(self, win, cb):
@@ -209,11 +239,12 @@ def main(e=None):
             [core.AnalogChannel(ch.namevar.get(), ch.pinvar.get(), (ch.pinvar.get() in daq.board.analog_signed), ch.downsamp)
                 if ch.pinvar.get() in anaset else
                 core.DigitalChannel(ch.namevar.get(), ch.pinvar.get(), ch.downsamp)
-                for ch in channels.winfo_children()])
+                for ch in Channel.byloc])
         return conf
     def newchannel(e=None):
         ch = Channel(channels)
         ch.pack()
+        #ch.grid(row=ch.loc-1, column=0)
         ch.update_idletasks()
         outcchs['scrollregion'] = (0,0,channels.winfo_width(), channels.winfo_height())
         outcchs.update_idletasks()
@@ -348,7 +379,7 @@ def main(e=None):
         newdat = daq.new_data()
         countlabel['text'] = int(countlabel['text']) + len(newdat)
         if newdat:
-            for n, ch in enumerate(channels.winfo_children(), 1):
+            for n, ch in enumerate(Channel.byloc, 1):
                 ch.add_data([dat[n] for dat in newdat])
         root.after(100, update_data)
     

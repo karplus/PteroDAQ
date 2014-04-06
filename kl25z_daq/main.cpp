@@ -67,9 +67,6 @@ void recorddata(void);
 
 
 int main(void) {
-    // set bus clock to 16 MHz to avoid divide in microsecond timestamp
-    //SIM->CLKDIV1 = (SIM->CLKDIV1 & ~SIM_CLKDIV1_OUTDIV4_MASK) | SIM_CLKDIV1_OUTDIV4(2);
-    // TODO: why does this break comms?
 
     adc_init();
     pit_init();

@@ -209,35 +209,35 @@ class Arduino32u4(ArduinoAVR):
 class FreedomKL25(Board):
     names = ('FRDM-KL25Z',)
     analogs = (
-        ('PB0', 8),
-        ('PB1', 9),
-        ('PB2', 12),
-        ('PB3', 13),
-        ('PC0', 14),
-        ('PC1', 15),
-        ('PC2', 11),
-        ('PD1', 69),
-        ('PD5', 70),
-        ('PD6', 71),
-        ('PE20', 0),
-        ('PE21', 4),
-        ('PE22', 3),
-        ('PE23', 7),
-        ('PE29', 68),
-        ('PE30', 23),
-        ('Diff/PE20-PE21', 32),
-        ('Diff/PE22-PE23', 35),
+        ('PTB0', 8),
+        ('PTB1', 9),
+        ('PTB2', 12),
+        ('PTB3', 13),
+        ('PTC0', 14),
+        ('PTC1', 15),
+        ('PTC2', 11),
+        ('PTD1', 69),
+        ('PTD5', 70),
+        ('PTD6', 71),
+        ('PTE20', 0),
+        ('PTE21', 4),
+        ('PTE22', 3),
+        ('PTE23', 7),
+        ('PTE29', 68),
+        ('PTE30', 23),
+        ('Diff/PTE20-PTE21', 32),
+        ('Diff/PTE22-PTE23', 35),
         ('Temperature', 26),
         ('Bandgap', 27),
         ('Aref', 29)) # todo: internal differentials
-    digitals = tuple(('P{}{}'.format(port[0], pin), (n * 32 + pin)) for n, port in enumerate((
+    digitals = tuple(('PT{}{}'.format(port[0], pin), (n * 32 + pin)) for n, port in enumerate((
             ('A', (1, 2, 4, 5, 12, 13, 14, 15, 16, 17)),
             ('B', (0, 1, 2, 3, 8, 9, 10, 11)),
             ('C', (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16, 17)),
             ('D', (0, 1, 2, 3, 4, 5, 6, 7)),
             ('E', (0, 1, 2, 3, 4, 5, 20, 21, 22, 23, 30, 31))
         )) for pin in port[1])
-    eint = tuple(x for x in digitals if x[0][1] in ('A', 'D'))
+    eint = tuple(x for x in digitals if x[0][2] in ('A', 'D'))
     intsense = (
         ('rises', 1),
         ('falls', 2),
@@ -250,8 +250,8 @@ class FreedomKL25(Board):
         ('Power', 1),
         ('External', 0))
     analog_signed = (
-        'Diff/PE20-PE21',
-        'Diff/PE22-PE23')
+        'Diff/PTE20-PTE21',
+        'Diff/PTE22-PTE23')
     timestamp_res = 1/48e6 # approximately 0.02 microseconds
     #power_voltage = 3.3
     def timer_calc(self, period):

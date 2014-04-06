@@ -94,11 +94,16 @@ class DataAcquisition(object):
             for ln in notes.split('\n'):
                 f.write('#   {}\n'.format(ln))
             for d in self._data:
-                f.write('\t'.join(
-                    format(x*scale*(2 if getattr(self.channels[n-1], 'signed') else 1), fmt)
-                        if n and isinstance(self.channels[n-1], AnalogChannel)
-                        else str(int(x))
-                        for n, x in enumerate(d)))
+                f.write(format(d[0], '.7f')) # timestamp
+                for n, x in enumerate(d[1:]):
+                    f.write('\t')
+                    if isinstance(self.channels[n], AnalogChannel):
+                        if self.channels[n].signed:
+                            f.write(format(x*scale*2, fmt))
+                        else:
+                            f.write(format(x*scale, fmt))
+                    else:
+                        f.write(str(int(x)))
                 f.write('\n')
     def _onconnect(self):
         # todo: version check
@@ -111,6 +116,7 @@ class DataAcquisition(object):
         if self._timeoffset is None:
             self._timeoffset = ts
         ts -= self._timeoffset
+        ts /= 24e6 # convert to seconds
         digbuf = bytearray()
         results = [ts] + [None] * len(self.channels)
         pos = 8
