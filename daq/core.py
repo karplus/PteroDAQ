@@ -62,6 +62,7 @@ class DataAcquisition(object):
     def clear(self):
         self._data = []
         self._nextdata = 0
+        self._timeoffset = None
     def save(self, fn, notes, convvolts):
         if convvolts:
             scale = self.board.power_voltage / 65535

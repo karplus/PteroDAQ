@@ -25,7 +25,7 @@ uint8_t pio_read(uint8_t pin) {
 
 void pio_begin(uint8_t pin, uint8_t sense) {
     volatile uint32_t* pcr = &(ctrl_ports[pin >> 5]->PCR[pin & 0x1F]);
-    *pcr &= PORT_PCR_IRQC_MASK;
+    *pcr &= ~PORT_PCR_IRQC_MASK;
     NVIC_EnableIRQ(PORTA_IRQn);
     NVIC_EnableIRQ(PORTD_IRQn);
     *pcr |= PORT_PCR_ISF_MASK | PORT_PCR_IRQC(sense | 8);

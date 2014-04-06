@@ -15,7 +15,9 @@ class ArduinoAVR(Board):
         ('rises', 3),
         ('falls', 2),
         ('changes', 1),
-        ('is low', 0))
+        #('is low', 0)
+        # removed due to lack of rate-limiting causing hang
+        )
     timestamp_res = 1e-6 # microsecond
     def timer_calc(self, period):
         # using Timer1
@@ -240,8 +242,10 @@ class FreedomKL25(Board):
         ('rises', 1),
         ('falls', 2),
         ('changes', 3),
-        ('is low', 0),
-        ('is high', 4))
+        #('is low', 0),
+        #('is high', 4)
+        # removed due to lack of rate-limiting causing hang
+        )
     aref = (
         ('Power', 1),
         ('External', 0))

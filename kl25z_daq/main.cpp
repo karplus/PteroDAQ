@@ -73,6 +73,8 @@ int main(void) {
 
     adc_init();
     pit_init();
+    pio_init();
+    __enable_irq();
     
     // send handshake message
     sendresp(MSG("DAQ"));
@@ -244,10 +246,12 @@ void SysTick_Handler(void) {
 }
 
 void PORTA_IRQHandler(void) {
+    PORTA->ISFR = (uint32_t) (-1); // clear all port A interrupt flags
     recorddata();
 }
 
 void PORTD_IRQHandler(void) {
+    PORTD->ISFR = (uint32_t) (-1); // clear all port D interrupt flags
     recorddata();
 }
 
