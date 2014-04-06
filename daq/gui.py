@@ -2,11 +2,13 @@ try:
     import tkinter as tk
     from tkinter import messagebox as tkm
     from tkinter import filedialog as tkf
+    from tkinter import simpledialog as tks
     from tkinter import ttk
 except ImportError:
     import Tkinter as tk
     import tkMessageBox as tkm
     import tkFileDialog as tkf
+    import tkSimpleDialog as tks
     import ttk
 import core
 from getports import ports
@@ -69,6 +71,9 @@ class Channel(ttk.Frame):
             else:
                 pinchoice['image'] = squareimg
         tk.Frame.__init__(self, master)
+        self.downsamp = 1
+        self.menu = tk.Menu(self, tearoff=False)
+        self.menu.add_command(label='Downsample', command=self.req_downsample)
         self.num = max(Channel.chnums) + 1
         Channel.chnums.add(self.num)
         self.namevar = nv = tk.StringVar()
@@ -90,12 +95,14 @@ class Channel(ttk.Frame):
         pinchoice['compound'] = 'left'
         pinchoice['image'] = sineimg
         delbutton = ImageButton(self, file=os.path.join(maindir, 'daq/icons/remove.gif'), command=self.remove)
+        optbutton = ImageButton(self, file=os.path.join(maindir, 'daq/icons/options.gif'), command=self.show_options)
         pv.set(daq.board.analogs[0][0])
         namefield.grid(row=0, column=0, sticky='ew')
         pinchoice.grid(row=0, column=1)
         delbutton.grid(row=0, column=2)
-        self.can.grid(row=0, column=3)
-        ttk.Separator(self, orient='horizontal').grid(row=1, column=0, columnspan=4, sticky='ew', padx=2, pady=2)
+        optbutton.grid(row=0, column=3)
+        self.can.grid(row=0, column=4)
+        ttk.Separator(self, orient='horizontal').grid(row=1, column=0, columnspan=5, sticky='ew', padx=2, pady=2)
     def remove(self, e=None):
         Channel.chnums.discard(self.num)
         self.destroy()
@@ -126,6 +133,12 @@ class Channel(ttk.Frame):
     def clear(self):
         self.coords = []
         self.can.coords(self.canline, 0, 0, 0, 0)
+    def show_options(self, e):
+        self.menu.post(e.x_root, e.y_root)
+    def req_downsample(self, e=None):
+        res = tks.askinteger('Downsampling', 'Downsample channel {} by'.format(self.namevar.get()), initialvalue=self.downsamp, minvalue=1)
+        if res is not None:
+            self.downsamp = res
 
 class PortSelect(object):
     def __init__(self, win, cb):
@@ -193,9 +206,9 @@ def main(e=None):
     def makeconf():
         conf = (core.TriggerTimed(secvar.get()) if triggertype.get() == 0 else core.TriggerPinchange(pinvar.get(), edgevar.get()),
             'Power', avgvar.get(),
-            [core.AnalogChannel(ch.namevar.get(), ch.pinvar.get(), (ch.pinvar.get() in daq.board.analog_signed))
+            [core.AnalogChannel(ch.namevar.get(), ch.pinvar.get(), (ch.pinvar.get() in daq.board.analog_signed), ch.downsamp)
                 if ch.pinvar.get() in anaset else
-                core.DigitalChannel(ch.namevar.get(), ch.pinvar.get())
+                core.DigitalChannel(ch.namevar.get(), ch.pinvar.get(), ch.downsamp)
                 for ch in channels.winfo_children()])
         return conf
     def newchannel(e=None):

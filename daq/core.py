@@ -10,11 +10,14 @@ class TriggerPinchange(object):
     def __init__(self, pin, sense):
         self.pin, self.sense = pin, sense
 class AnalogChannel(object):
-    def __init__(self, name, pin, signed=False):
+    def __init__(self, name, pin, signed=False, downsample=1):
         self.name, self.pin, self.signed = name, pin, signed
+        self.downsample = downsample
 class DigitalChannel(object):
-    def __init__(self, name, pin):
+    def __init__(self, name, pin, downsample=1):
         self.name, self.pin = name, pin
+        self.downsample = downsample
+
 
 class DataAcquisition(object):
     def __init__(self):
@@ -128,4 +131,7 @@ class DataAcquisition(object):
                 if bitcount == 8:
                     bitcount = 0
                     bufpos += 1
+        for n in range(len(self.channels)):
+            if len(self._data) % self.channels[n].downsample:
+                results[n+1] = self._data[-1][n+1]
         self._data.append(results)
