@@ -94,7 +94,11 @@ class DataAcquisition(object):
             for ln in notes.split('\n'):
                 f.write('#   {}\n'.format(ln))
             for d in self._data:
-                f.write('\t'.join(format(x*scale*(2 if getattr(self.channels[n-1], 'signed') else 1), fmt) if n else str(x) for n, x in enumerate(d)))
+                f.write('\t'.join(
+                    format(x*scale*(2 if getattr(self.channels[n-1], 'signed') else 1), fmt)
+                        if n and isinstance(self.channels[n-1], AnalogChannel)
+                        else str(int(x))
+                        for n, x in enumerate(d)))
                 f.write('\n')
     def _onconnect(self):
         # todo: version check
