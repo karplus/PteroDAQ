@@ -106,7 +106,7 @@ class Channel(ttk.Frame):
         pinchoice.grid(row=0, column=1)
         #delbutton.grid(row=0, column=2)
         optbutton.grid(row=0, column=2)
-        self.can.grid(row=0, column=4)
+        self.can.grid(row=0, column=3)
         ttk.Separator(self, orient='horizontal').grid(row=1, column=0, columnspan=4, sticky='ew', padx=2, pady=2)
     def remove(self, e=None):
         Channel.chnums.discard(self.num)
@@ -128,7 +128,7 @@ class Channel(ttk.Frame):
                 c.append(n)
                 c.append(self.slheight-1-x)
         else:
-            del c[:-(self.slwidth+len(ds))*2]
+            del c[:-(self.slwidth-len(ds))*2]
             if c[0]:
                 for n in range(0, len(c), 2):
                     c[n] -= len(ds)
