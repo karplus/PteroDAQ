@@ -109,7 +109,6 @@ class Channel(ttk.Frame):
         self.can.grid(row=0, column=4)
         ttk.Separator(self, orient='horizontal').grid(row=1, column=0, columnspan=4, sticky='ew', padx=2, pady=2)
     def remove(self, e=None):
-        print('remove called')
         Channel.chnums.discard(self.num)
         Channel.byloc.remove(self)
         self.destroy()
@@ -186,6 +185,7 @@ class PortSelect(object):
         self.f.destroy()
         self.pl.after_cancel(self.aft)
         self.cb(tostr(port))
+        self.aft = root.after(100, self.checkstart)
     def updateports(self):
         ps = self.ps = ports()
         portlist = self.pl
@@ -202,9 +202,15 @@ class PortSelect(object):
             if nm == fcn:
                 portlist.selection_set(str(n))
         self.aft = portlist.after(500, self.updateports)
+    def checkstart(self):
+        if startmain.go:
+            main()
+        else:
+            root.after(100, self.checkstart)
 
 def startmain():
-    root.after_idle(main)
+    startmain.go = True
+startmain.go = False
 
 def doconn(port):
     daq.connect(port, startmain)
@@ -217,7 +223,7 @@ def main(e=None):
     global hzvar
     global channels
     global outcchs
-    
+        
     f = ttk.Frame(root)
     root.title('Data Acquisition')
     anaset = {x[0] for x in daq.board.analogs}
@@ -244,7 +250,6 @@ def main(e=None):
     def newchannel(e=None):
         ch = Channel(channels)
         ch.pack()
-        #ch.grid(row=ch.loc-1, column=0)
         ch.update_idletasks()
         outcchs['scrollregion'] = (0,0,channels.winfo_width(), channels.winfo_height())
         outcchs.update_idletasks()
@@ -395,4 +400,3 @@ daq = core.DataAcquisition()
 ps = PortSelect(root, doconn)
 
 root.mainloop()
-
