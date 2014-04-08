@@ -24,6 +24,7 @@ V version
 G go
 S stop
 I individual read
+M model info
 
 report format: '*' + length + data + checksum
 length: 1 byte for length of data only
@@ -38,6 +39,10 @@ checksum: 1 byte such that modulo 256 sum of entire msg (including '*', length, 
 #define sendchar(x) (comm.putc(x))
 
 USBSerial comm;
+
+PwmOut led_red(PTB18);
+PwmOut led_green(PTB19);
+PwmOut led_blue(PTD1);
 
 struct Config {
     uint8_t trigtype;
@@ -67,11 +72,29 @@ void recorddata(void);
 
 
 int main(void) {
+    uint64_t pt;
+    uint8_t i;
+    led_red.period_ms(1);
+    //led_red.pulsewidth_ms(10);
+    led_green.period_ms(1);
+    //led_green.pulsewidth_ms(10);
+    led_blue.period_ms(1);
+    led_blue = 1;
 
     adc_init();
     pit_init();
     pio_init();
     __enable_irq();
+    
+    for (i = 50; i <= 100; i++) {
+        led_red = i/100.;
+        led_green = i/100.;
+        pt = pit_time();
+        while (pit_time() < pt+480000); // 20 ms
+    }
+    led_red = 1;
+    led_green = 1;
+    led_blue = 0.7;
     
     // send handshake message
     sendresp(MSG("DAQ"));
@@ -106,6 +129,10 @@ int main(void) {
                     stoprunning();
                     queue_clear();
                     sendresp(MSG("DAQ"));
+                    led_red = 0.7;
+                    pt = pit_time();
+                    while (pit_time() < pt+12000000); // 500 ms
+                    led_red = 1;
                     break;
                 case 'M':
                     adc_aref(1);
