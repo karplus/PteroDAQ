@@ -48,7 +48,7 @@ uint16_t queue_space(void) {
     if (headdiff > 0) {
         return headdiff;
     } else if (headdiff < 0) {
-        return QUEUE_SIZE-headdiff;
+        return QUEUE_SIZE+headdiff;
     } else {
         return queue_wrotelast ? 0 : QUEUE_SIZE;
     }

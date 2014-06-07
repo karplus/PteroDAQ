@@ -249,6 +249,9 @@ void stoprunning(void) {
 
 void recorddata(void) {
     uint8_t ind;
+    if (queue_space() < datalen) {
+        return;
+    }
     // get timestamp
     queue_push64(pit_time());
     // for each channel
