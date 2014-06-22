@@ -8,7 +8,11 @@ def limit(x, a, b):
     return x
 
 class Board(object):
-    pass
+    by_id = []
+    @classmethod
+    def supported(cls, brd)
+        cls.by_id.append(brd)
+        return brd
 
 class ArduinoAVR(Board):
     intsense = (
@@ -36,6 +40,7 @@ class ArduinoAVR(Board):
             self._tmr_base = 1.0/16e6
         self.power_voltage = 1024./(unpack_from('<H', model, 1)[0]/1.1)
 
+@Board.supported
 class ArduinoStandard(ArduinoAVR):
     names = (
         'Arduino Uno',
@@ -82,6 +87,7 @@ class ArduinoStandard(ArduinoAVR):
         ('External', 0),
         ('1.1V', 3))
 
+@Board.supported
 class ArduinoExtraAnalog(ArduinoStandard):
     names = (
         'Arduino Mini',
@@ -100,6 +106,7 @@ class ArduinoExtraAnalog(ArduinoStandard):
         ('Temperature', 8),
         ('Bandgap', 14))
 
+@Board.supported
 class ArduinoMega(ArduinoAVR):
     names = ('Arduino Mega',)
     analogs = (
@@ -148,6 +155,7 @@ class ArduinoMega(ArduinoAVR):
         ('1.1V', 2),
         ('2.56V', 3))
 
+@Board.supported
 class Arduino32u4(ArduinoAVR):
     names = (
         'Arduino Leonardo',
@@ -206,6 +214,7 @@ class Arduino32u4(ArduinoAVR):
         ('External', 0),
         ('2.56V', 3))
 
+@Board.supported
 class FreedomKL25(Board):
     names = ('FRDM-KL25Z',)
     analogs = (
@@ -269,10 +278,8 @@ class FreedomKL25(Board):
     def setup(self, model):
         self.power_voltage = 65536./(unpack_from('<H', model)[0])
 
-allboards = [ArduinoStandard, ArduinoExtraAnalog, ArduinoMega, Arduino32u4, FreedomKL25]
-
 def getboardinfo(model):
     boardnum = unpack_from('<H', model)[0]
-    board = allboards[boardnum-1]()
+    board = Board.by_id[boardnum-1]()
     board.setup(model[2:])
     return board
