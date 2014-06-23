@@ -10,7 +10,7 @@ def limit(x, a, b):
 class Board(object):
     by_id = []
     @classmethod
-    def supported(cls, brd)
+    def supported(cls, brd):
         cls.by_id.append(brd)
         return brd
 
