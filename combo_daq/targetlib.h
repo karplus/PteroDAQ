@@ -1,9 +1,11 @@
 #ifdef __AVR_MEGA__
 
-#include "Arduino.h"
-#define PLAT_ATMEGA 1
+#include <avr/io.h>
+#include <avr/interrupt.h>
+#include <stdbool.h>
+#include <stddef.h>
 
-#define bool boolean
+#define PLAT_ATMEGA 1
 
 #else
 

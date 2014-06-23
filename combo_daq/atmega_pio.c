@@ -7,15 +7,15 @@ void pio_init(void) {
 }
 
 #if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
-    volatile uint8_t* const pinregs[] = {NULL, PINB, PINC, PIND};
+    volatile uint8_t* pinregs[] = {NULL, &PINB, &PINC, &PIND};
 #elif defined(__AVR_ATmega32U4__)
-    volatile uint8_t* const pinregs[] = {NULL, PINB, PINC, PIND, PINE, PINF};
+    volatile uint8_t* pinregs[] = {NULL, &PINB, &PINC, &PIND, &PINE, &PINF};
 #elif defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__)
-    volatile uint8_t* const pinregs[] = {PINA, PINB, PINC, PIND, PINE, PINF, PING, PINH, NULL, PINJ, PINK, PINL};
+    volatile uint8_t* pinregs[] = {&PINA, &PINB, &PINC, &PIND, &PINE, &PINF, &PING, &PINH, NULL, &PINJ, &PINK, &PINL};
 #endif
 
 uint8_t pio_read(uint8_t pin) {
-    return (pinregs[pin >> 4] & (1 << (pin & 0xF))) ? 1 : 0;
+    return (*(pinregs[pin >> 4]) & (1 << (pin & 0xF))) ? 1 : 0;
 }
 
 void pio_trigger(uint8_t pin, uint8_t sense) {
@@ -95,4 +95,5 @@ ISR(INT7_vect, ISR_ALIASOF(INT0_vect));
 #endif
 
 #endif
+
 

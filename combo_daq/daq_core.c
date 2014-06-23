@@ -58,8 +58,8 @@ void parse_config(uint8_t buf[], uint8_t len) {
         conf.trigprescale = buf[ind++];
         conf.trigreload = buf[ind++];
         conf.trigreload |= buf[ind++] << 8;
-        conf.trigreload |= buf[ind++] << 16;
-        conf.trigreload |= buf[ind++] << 24;
+        conf.trigreload |= (uint32_t) buf[ind++] << 16;
+        conf.trigreload |= (uint32_t) buf[ind++] << 24;
     } else if (conf.trigtype == 2) { // pinchange
         conf.trigintsense = buf[ind++];
         conf.trigintpin = buf[ind++];

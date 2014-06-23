@@ -4,6 +4,8 @@ extern "C" {
 
 #if PLAT_ATMEGA
 
+#include "Arduino.h"
+
 extern "C" {
 
 void ser_init(void) {
@@ -11,7 +13,7 @@ void ser_init(void) {
     while (!Serial); // wait for connection (32u4 only)
 }
 
-bool serc_readable(void) {
+bool ser_readable(void) {
     return Serial.available() != 0;
 }
 
