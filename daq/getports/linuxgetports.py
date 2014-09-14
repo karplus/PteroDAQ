@@ -13,3 +13,5 @@ def portiter():
     for x in glob.iglob(sys_search):
         y = x[len(sys_prefix):-len(sys_suffix)]
         yield (y, dev_prefix + y)
+
+# /sys/bus/usb/devices/usb*/*/*/tty

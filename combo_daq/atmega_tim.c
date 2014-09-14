@@ -47,7 +47,8 @@ void tim_trigger(uint8_t prescale, uint32_t reload) {
 }
 
 void tim_cancel(void) {
-    // TODO
+    TIMSK1 = 0;
+    TCCR1B = 0;
 }
 
 ISR(TIMER1_OVF_vect) {
@@ -63,4 +64,5 @@ ISR(TIMER1_COMPA_vect) {
 }
 
 #endif
+
 

@@ -146,7 +146,8 @@ void handle_command(void) {
             // TODO indicate connection with LED
             break;
         case 'M':
-            // TODO model info
+            resp = get_model();
+            resplen = MODEL_INFO_LEN;
             break;
         default:
             return;

@@ -34,11 +34,9 @@ class ArduinoAVR(Board):
         actual = (2 * pr * top * base)
         return actual, (n, top)
     def setup(self, model):
-        if model[0] == 'a':
-            self._tmr_base = 1.0/8e6
-        elif model[0] == 'b':
-            self._tmr_base = 1.0/16e6
-        self.power_voltage = 1024./(unpack_from('<H', model, 1)[0]/1.1)
+        m = unpack_from('<HH', model, 0)
+        self._tmr_base = 1./(m[0]*1000) # frequency given in kHz
+        self.power_voltage = 65536./(m[1]/1.1) # 10 bit ADC, but left aligned to 16 bits
 
 @Board.supported
 class ArduinoStandard(ArduinoAVR):
