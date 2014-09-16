@@ -9,14 +9,14 @@ uint8_t* get_model(void) {
 
     #if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
         #if NUM_ANALOG_INPUTS == 8
-            resp[0] = 1;
+            resp[0] = 2;
         #else
-            resp[0] = 0;
+            resp[0] = 1;
         #endif
     #elif defined(__AVR_ATmega32U4__)
-        resp[0] = 3;
+        resp[0] = 4;
     #elif defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__)
-        resp[0] = 2;
+        resp[0] = 3;
     #endif
     resp[1] = 0;
     resp[2] = (F_CPU/1000) & 0xFF;

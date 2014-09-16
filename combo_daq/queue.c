@@ -24,11 +24,14 @@ void queue_push16(uint16_t x) {
     queue_push(x >> 8);
 }
 
-void queue_push64(uint64_t x) {
+void queue_push32(uint32_t x) {
     queue_push16(x & 0xFFFF);
-    queue_push16((x >> 16) & 0xFFFF);
-    queue_push16((x >> 32) & 0xFFFF);
-    queue_push16(x >> 48);
+    queue_push16(x >> 16);
+}
+
+void queue_push64(uint64_t x) {
+    queue_push32(x & 0xFFFFFFFF);
+    queue_push32(x >> 32);
 }
 
 void queue_aggregate_bits(void) {

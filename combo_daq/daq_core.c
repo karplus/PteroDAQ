@@ -32,11 +32,18 @@ void daq_setup(void) {
 
 void trigger_handler(void) {
     uint8_t ind;
+    static uint32_t readcount = 0;
+    
+    ser_putc('b');
     if (queue_space() < datalen) {
         return;
     }
     // get timestamp
-    queue_push64(tim_time()); // TODO: not always valid (atmega)
+    if (conf.trigtype == 1) {
+        queue_push32(readcount++);
+    } else {
+        queue_push64(tim_time());
+    }
     // for each channel
     for (ind = 0; ind < conf.channelcount; ind++) {
         // record, push to queue
@@ -47,11 +54,11 @@ void trigger_handler(void) {
         }
     }
     queue_aggregate_bits();
+    ser_putc('c');
 }
 
 void parse_config(uint8_t buf[], uint8_t len) {
     uint8_t ind = 0, chnum = 0, digcount = 0;
-    datalen = 8;
     // trigger
     conf.trigtype = buf[ind++];
     if (conf.trigtype == 1) { // timed
@@ -60,9 +67,11 @@ void parse_config(uint8_t buf[], uint8_t len) {
         conf.trigreload |= buf[ind++] << 8;
         conf.trigreload |= (uint32_t) buf[ind++] << 16;
         conf.trigreload |= (uint32_t) buf[ind++] << 24;
+        datalen = 4;
     } else if (conf.trigtype == 2) { // pinchange
         conf.trigintsense = buf[ind++];
         conf.trigintpin = buf[ind++];
+        datalen = 8;
     }
     // aref
     conf.arefchoice = buf[ind++];
@@ -87,8 +96,10 @@ void start_running(void) {
     if (conf.trigtype == 1) {
         tim_trigger(conf.trigprescale, conf.trigreload);
     } else if (conf.trigtype == 2) {
+        tim_watch();
         pio_trigger(conf.trigintpin, conf.trigintsense);
     }
+    ser_putc('a');
 }
 
 void stop_running(void) {

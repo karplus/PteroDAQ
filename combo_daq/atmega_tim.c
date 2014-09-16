@@ -36,11 +36,13 @@ uint64_t tim_time(void) {
 }
 
 void tim_trigger(uint8_t prescale, uint32_t reload) {
-    wrap_to = (reload & 0xFFFF);
+    //wrap_to = (reload & 0xFFFF);
+    wrap_to = reload >> 16;
     longticks = 0;
     TCCR1A = 0; // no pwm output, wgm setting
     TCNT1 = 0; // clear counter
-    OCR1A = (reload >> 16); // set overflow value
+    //OCR1A = (reload >> 16); // set overflow value
+    OCR1A = reload & 0xFFFF;
     TIFR1 = _BV(OCF1A); // clear interrupt flag
     TIMSK1 = _BV(OCIE1A); // enable interrupt
     TCCR1B = _BV(WGM12) | prescale; // ctc mode, go

@@ -204,11 +204,15 @@ class PortSelect(object):
         self.aft = portlist.after(500, self.updateports)
     def checkstart(self):
         if startmain.go:
-            main()
+            if startmain.fail is None:
+                main()
+            else:
+                tkm.showerror('Error', startmain.fail)
         else:
             root.after(100, self.checkstart)
 
-def startmain():
+def startmain(fail=None):
+    startmain.fail = fail
     startmain.go = True
 startmain.go = False
 
@@ -311,10 +315,10 @@ def main(e=None):
     pinvar = tk.StringVar()
     edgevar = tk.StringVar()
     powervar = tk.IntVar()
-    avgvar = tk.IntVar()
+    avgvar = tk.StringVar()
     secvar.set(0.1)
     hzvar.set(10)
-    avgvar.set(32)
+    avgvar.set(daq.board.avg[-1][0])
     powervar.set(1)
     secvar.trace('w', changetime)
     hzvar.trace('w', changetime)
@@ -333,9 +337,10 @@ def main(e=None):
     pinvar.set(daq.board.eint[0][0])
     edgevar.set(daq.board.intsense[0][0])
     powerlabel = ttk.Checkbutton(triggers, text='Supply voltage: {:.4}'.format(daq.board.power_voltage), variable=powervar)
-    avglabel = ttk.Label(triggers, text='x Averaging')
-    avgfield = tk.OptionMenu(triggers, avgvar, *[1, 4, 8, 16, 32])
-    avgfield['width'] = 5
+    if len(daq.board.avg) > 1:
+        avglabel = ttk.Label(triggers, text='x Averaging')
+        avgfield = tk.OptionMenu(triggers, avgvar, *(x[0] for x in daq.board.avg))
+        avgfield['width'] = 5
     triggerlabel.grid(row=0, column=0, columnspan=4)
     timetrigger.grid(row=1, column=0, columnspan=4)
     pintrigger.grid(row=3, column=0, columnspan=4)
@@ -346,8 +351,9 @@ def main(e=None):
     pinfield.grid(row=4, column=0, columnspan=2)
     edgefield.grid(row=4, column=2, columnspan=2)
     powerlabel.grid(row=5, column=0, columnspan=4)
-    avgfield.grid(row=6, column=1)
-    avglabel.grid(row=6, column=2, columnspan=2)
+    if len(daq.board.avg) > 1:
+        avgfield.grid(row=6, column=1)
+        avglabel.grid(row=6, column=2, columnspan=2)
 
     noteslabel = ttk.Label(notes, text='Notes', font=('TkTextFont', 0, 'bold'))
     notesbox = tk.Text(notes, height=6, width=60 if iswindows else 40, wrap='word', highlightthickness=0, font='TkTextFont')

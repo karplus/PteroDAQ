@@ -22,16 +22,19 @@ class ArduinoAVR(Board):
         #('is low', 0)
         # removed due to lack of rate-limiting causing hang
         )
-    timestamp_res = 1e-6 # microsecond
+    avg = (
+        ('1', 1),)
+    analog_signed = ()
+    timestamp_res = 0.5e-6 # half-microsecond
     def timer_calc(self, period):
         # using Timer1
         prescales = (1, 8, 64, 256, 1024)
         base = self._tmr_base
-        for n, pr in enumerate(prescales):
-            if period <= ((1<<17) - 2) * pr * base:
+        for n, pr in enumerate(prescales, 1):
+            if period <= ((1<<16) - 2) * pr * base:
                 break
-        top = limit(round(period / (2 * pr * base)), 3, (1<<16)-1)
-        actual = (2 * pr * top * base)
+        top = limit(round(period / (pr * base)), 3, (1<<16)-1)
+        actual = (pr * top * base)
         return actual, (n, top)
     def setup(self, model):
         m = unpack_from('<HH', model, 0)
@@ -57,26 +60,26 @@ class ArduinoStandard(ArduinoAVR):
         ('Temperature', 8),
         ('Bandgap', 14))
     digitals = (
-        ('D0', 32),
-        ('D1', 33),
-        ('D2', 34),
-        ('D3', 35),
-        ('D4', 36),
-        ('D5', 37),
-        ('D6', 38),
-        ('D7', 39),
-        ('D8', 0),
-        ('D9', 1),
-        ('D10', 2),
-        ('D11', 3),
-        ('D12', 4),
-        ('D13', 5),
-        ('A0', 16),
-        ('A1', 17),
-        ('A2', 18),
-        ('A3', 19),
-        ('A4', 20),
-        ('A5', 21))
+        ('D0', 48),
+        ('D1', 49),
+        ('D2', 50),
+        ('D3', 51),
+        ('D4', 52),
+        ('D5', 53),
+        ('D6', 54),
+        ('D7', 55),
+        ('D8', 16),
+        ('D9', 17),
+        ('D10', 18),
+        ('D11', 19),
+        ('D12', 20),
+        ('D13', 21),
+        ('A0', 32),
+        ('A1', 33),
+        ('A2', 34),
+        ('A3', 35),
+        ('A4', 36),
+        ('A5', 37))
     eint = (
         ('D2', 0),
         ('D3', 1))
@@ -178,29 +181,29 @@ class Arduino32u4(ArduinoAVR):
         ('Temperature', 39),
         ('Bandgap', 30)) # todo: differential
     digitals = (
-        ('D0', 34),
-        ('D1', 35),
-        ('D2', 33),
-        ('D3', 32),
-        ('D4', 36),
-        ('D5', 22),
-        ('D6', 39),
-        ('D7', 54),
-        ('D8', 4),
-        ('D9', 5),
-        ('D10', 6),
-        ('D11', 7),
-        ('D12', 38),
-        ('D13', 23),
-        ('A0', 71),
-        ('A1', 70),
-        ('A2', 69),
-        ('A3', 68),
-        ('A4', 65),
-        ('A5', 64),
-        ('SCK', 1),
-        ('MOSI', 2),
-        ('MISO', 3))
+        ('D0', 50),
+        ('D1', 51),
+        ('D2', 49),
+        ('D3', 48),
+        ('D4', 52),
+        ('D5', 38),
+        ('D6', 55),
+        ('D7', 70),
+        ('D8', 20),
+        ('D9', 21),
+        ('D10', 22),
+        ('D11', 23),
+        ('D12', 54),
+        ('D13', 39),
+        ('A0', 87),
+        ('A1', 86),
+        ('A2', 85),
+        ('A3', 84),
+        ('A4', 81),
+        ('A5', 80),
+        ('SCK', 17),
+        ('MOSI', 18),
+        ('MISO', 19))
     eint = (
         ('D0', 2),
         ('D1', 3),
@@ -256,10 +259,16 @@ class FreedomKL25(Board):
     aref = (
         ('Power', 1),
         ('External', 0))
+    avg = (
+        ('1', 0),
+        ('4', 4),
+        ('8', 5),
+        ('16', 6),
+        ('32', 7))
     analog_signed = (
         'Diff/PTE20-PTE21',
         'Diff/PTE22-PTE23')
-    timestamp_res = 1/48e6 # approximately 0.02 microseconds
+    timestamp_res = 1/24e6 # approximately 0.04 microseconds
     #power_voltage = 3.3
     def timer_calc(self, period):
         # using SysTick

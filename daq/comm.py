@@ -48,11 +48,12 @@ class CommPort(object):
         t1.start()
     
     def _connect(self):
+        #print('enter comm._connect')
         self._reset()
         self._do_readin = True
         self._readthread.start()
-        if self.handshake():
-            self._conncb()
+        #print('about to handshake')
+        self._conncb()
     
     # reset a serial port and prepare it for use
     def _reset(self):
@@ -77,20 +78,19 @@ class CommPort(object):
         self.ser = s2
         return
     
-    def handshake(self):
-        return self.command('H', '') == 'DAQ'
-    
-    def command(self, c, d=''):
-        mbase = b'!' + tobytes(c) + asbyte(len(d)) + tobytes(d)
+    def command(self, c, d=b''):
+        mbase = b'!' + tobytes(c) + asbyte(len(d)) + d
         #print('mbase', mbase)
         msg = mbase + asbyte(-bytesum(bytes(mbase)) % 256)
         self.ser.write(msg)
-        self._respavail.wait()
+        self._respavail.wait(timeout=5)
+        if not self._respavail.is_set():
+            raise RuntimeError('Command timeout.')
         self._respavail.clear()
-        cm, d = self._cmresp
+        cm, res = self._cmresp
         if cm != tobytes(c):
-            return None
-        return tostr(d)
+            raise RuntimeError('Invalid command response.')
+        return res
     
     def _readin(self):
         """Read and process data from the serial port.

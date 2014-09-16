@@ -22,45 +22,45 @@ void pio_trigger(uint8_t pin, uint8_t sense) {
     EIFR = 0xFF; // clear flags
     switch (pin) {
         #if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
-        case 0x32: // PD2, aka INT0
+        case 0: // PD2, aka INT0
             EICRA = sense;
             EIMSK = _BV(INT0);
             break;
-        case 0x33: // PD3, aka INT1
+        case 1: // PD3, aka INT1
             EICRA = sense << 2;
             EIMSK = _BV(INT1);
             break;
         #else
-        case 0x30: // PD0, aka INT0
+        case 0: // PD0, aka INT0
             EICRA = sense;
             EIMSK = _BV(INT0);
             break;
-        case 0x31: // PD1, aka INT1
+        case 1: // PD1, aka INT1
             EICRA = sense << 2;
             EIMSK = _BV(INT1);
             break;
-        case 0x32: // PD2, aka INT2
+        case 2: // PD2, aka INT2
             EICRA = sense << 4;
             EIMSK = _BV(INT2);
             break;
-        case 0x33: // PD3, aka INT3
+        case 3: // PD3, aka INT3
             EICRA = sense << 6;
             EIMSK = _BV(INT3);
             break;
-        case 0x46: // PE6, aka INT6
+        case 6: // PE6, aka INT6
             EICRB = sense << 4;
             EIMSK = _BV(INT6);
             break;
         #if defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__)
-        case 0x44: // PE4, aka INT4
+        case 4: // PE4, aka INT4
             EICRB = sense;
             EIMSK = _BV(INT4);
             break;
-        case 0x45: // PE5, aka INT5
+        case 5: // PE5, aka INT5
             EICRB = sense << 2;
             EIMSK = _BV(INT5);
             break;
-        case 0x47: // PE7, aka INT7
+        case 7: // PE7, aka INT7
             EICRB = sense << 6;
             EIMSK = _BV(INT7);
             break;
