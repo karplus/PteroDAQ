@@ -2,11 +2,11 @@
 
 #define QUEUE_SIZE 8192
 
-uint8_t queue_data[QUEUE_SIZE];
-uint16_t queue_head, queue_tail;
-bool queue_wrotelast;
-uint8_t queue_bitcache;
-uint8_t queue_bitcachepos;
+static volatile uint8_t queue_data[QUEUE_SIZE];
+static volatile uint16_t queue_head, queue_tail;
+static volatile bool queue_wrotelast;
+static volatile uint8_t queue_bitcache;
+static volatile uint8_t queue_bitcachepos;
 
 void queue_push(uint8_t x) {
     queue_data[queue_head] = x;
@@ -55,14 +55,19 @@ uint16_t queue_space(void) {
 }
 
 bool queue_avail(void) {
-    return (queue_wrotelast) || (queue_head != queue_tail);
+    __disable_irq();
+    bool avail = (queue_wrotelast) || (queue_head != queue_tail);
+    __enable_irq();
+    return avail;
 }
 
 uint8_t queue_pop(void) {
+    __disable_irq();
     uint8_t x = queue_data[queue_tail];
     queue_tail += 1;
     queue_tail %= QUEUE_SIZE;
     queue_wrotelast = false;
+    __enable_irq();
     return x;
 }
 
