@@ -1,4 +1,7 @@
+from __future__ import division,print_function
+import sys
 from struct import unpack_from
+
 
 def limit(x, a, b):
     if x < a:
@@ -8,13 +11,95 @@ def limit(x, a, b):
     return x
 
 class Board(object):
-    by_id = []
-    @classmethod
-    def supported(cls, brd):
-        cls.by_id.append(brd)
-        return brd
+    """Abstract base class for all board descriptions
+    """
+    # class-level variables:
+    by_id ={}   # maps model numbers to board descriptions,
+                # which are subclasses of Board
+    
+    # members of classes:
+    names=()    # tuple of names of boards fitting this description
+                # (currently just documentation)
+    bandgap = None      # nominal bandgap voltage 
+                        # connected to ADC input channel for specific board
 
+    analogs=()  # tuple of pairs (analog pin name, channel number)
+    digitals=() # tuple of pairs (digital pin name, port and position code)
+    differentials=()    # tuple of either pairs ("X-Y", channel number)
+                        # or 5-tuples ("g*(X-Y)", channel number, "X","Y", gain)
+    
+    eint = ()   # tuple of pairs (interrupt pin name, interrupt number)
+    aref = ()   # tuple of pairs (analog reference name, code from data sheet)
+    
+    intsense = ()       # tuple of pairs
+                        # (triggering type name, numeric code)
+                        # 'rises', 'falls', 'changes'
+                        # Ordered for human interface.
+    
+    avg = ()            # tuple of pairs
+                        # hardware averaging options for board
+                        # (name of option, numeric code)
+    
+    default_avg = '1'	# default averaging is to use none (averaging 1 sample)
+    			# but can be overridden in specific boards
+    
+    timestamp_res = None # resolution of timestamps in seconds
+    power_voltage = None # power supply voltage, needed for analog reference info
+
+    def __init__(self):
+        """Build dict self.name_from_probe, mapping probes to names.
+        Build dict self.probe_from_name, mapping names to probes.
+        """
+        self.name_from_probe=dict()
+        self.probe_from_name=dict()
+        self.gain_from_name=dict()
+        for name,pin in self.digitals:
+            probe = 2 | (pin << 8)
+            self.name_from_probe[probe]=name
+            self.probe_from_name[name]=probe
+            self.gain_from_name[name]=1
+
+        for name,mux in self.analogs:
+            probe = 1 | (mux << 8)
+            self.name_from_probe[probe]=name
+            self.probe_from_name[name]=probe
+            self.gain_from_name[name]=1
+
+        for diff in self.differentials:
+            name = diff[0]
+            mux = diff[1]
+            probe = 1 | (mux << 8)
+            self.name_from_probe[probe]=name
+            self.probe_from_name[name]=probe
+            self.gain_from_name[name]=0.5 if len(diff)<5 else 0.5*diff[-1]
+    
+    def is_differential(self,name):
+        """Is this the name for a differential channel?"""
+        return name in {x[0] for x in self.differentials}
+    
+    def is_analog(self,name):
+        """Is this the name for a single-ended analog channel?"""
+        return name in {x[0] for x in self.analogs}
+    
+    def is_digital(self,name):
+        """Is this the name for a digital channel?"""
+        return name in {x[0] for x in self.digitals}
+    
+    @classmethod
+    def supported(cls, model_num):
+        """class decorator for appending subclasses to 
+        Board's dictionary of supported boards
+        """
+        def decorator(brd):
+            cls.by_id[model_num]=brd
+            return brd
+        return decorator
+        
 class ArduinoAVR(Board):
+    """Board description abstract class for Arduino boards
+    and compatibles using AVR processors
+    """
+    
     intsense = (
         ('rises', 3),
         ('falls', 2),
@@ -24,9 +109,16 @@ class ArduinoAVR(Board):
         )
     avg = (
         ('1', 1),)
-    analog_signed = ()
+    bandgap = 1.1
     timestamp_res = 0.5e-6 # half-microsecond
+    
     def timer_calc(self, period):
+        """computes counter parameters
+                n is index for prescaler
+                top is counter period in prescaled ticks
+                actual time in seconds
+            returns (actual, (n,top))
+        """
         # using Timer1
         prescales = (1, 8, 64, 256, 1024)
         base = self._tmr_base
@@ -36,12 +128,17 @@ class ArduinoAVR(Board):
         top = limit(round(period / (pr * base)), 3, (1<<16)-1)
         actual = (pr * top * base)
         return actual, (n, top)
+    
     def setup(self, model):
-        m = unpack_from('<HH', model, 0)
-        self._tmr_base = 1./(m[0]*1000) # frequency given in kHz
-        self.power_voltage = 65536./(m[1]/1.1) # 10 bit ADC, but left aligned to 16 bits
+        """unpacks model information sent from model info command
+            and updates parameters for power_voltage and _tmr_base
+        """
+        m = unpack_from('<HH', model, offset=0)
+#        print("DEBUG: m=", m, "self.bandgap=", self.bandgap, file=sys.stderr)
+        self.power_voltage = 65536./(m[0]/self.bandgap) # 10 bit ADC, but left aligned to 16 bits
+        self._tmr_base = 1./(m[1]*1000) # frequency given in kHz
 
-@Board.supported
+@Board.supported(1)
 class ArduinoStandard(ArduinoAVR):
     names = (
         'Arduino Uno',
@@ -88,7 +185,7 @@ class ArduinoStandard(ArduinoAVR):
         ('External', 0),
         ('1.1V', 3))
 
-@Board.supported
+@Board.supported(2)
 class ArduinoExtraAnalog(ArduinoStandard):
     names = (
         'Arduino Mini',
@@ -107,7 +204,7 @@ class ArduinoExtraAnalog(ArduinoStandard):
         ('Temperature', 8),
         ('Bandgap', 14))
 
-@Board.supported
+@Board.supported(3)
 class ArduinoMega(ArduinoAVR):
     names = ('Arduino Mega',)
     analogs = (
@@ -156,7 +253,7 @@ class ArduinoMega(ArduinoAVR):
         ('1.1V', 2),
         ('2.56V', 3))
 
-@Board.supported
+@Board.supported(4)
 class Arduino32u4(ArduinoAVR):
     names = (
         'Arduino Leonardo',
@@ -179,7 +276,7 @@ class Arduino32u4(ArduinoAVR):
         ('A10/D9', 36),
         ('A11/D10', 37),
         ('Temperature', 39),
-        ('Bandgap', 30)) # todo: differential
+        ('Bandgap', 30))
     digitals = (
         ('D0', 50),
         ('D1', 51),
@@ -204,6 +301,48 @@ class Arduino32u4(ArduinoAVR):
         ('SCK', 17),
         ('MOSI', 18),
         ('MISO', 19))
+    differentials= ()
+    
+    # it turns out that the "differential" ADC is complete
+    # crap on the 32U4 chip.  The ADLAR shift doesn't get the 
+    # low-resolution difference into the right position,
+    # and the 10x amplifier seems to randomly flip the sign of
+    # the amplification from time to time.
+    # We will NOT be implementing differential channels on Leonardo
+    # boards for PteroDAQ!
+    NON_WORKING_differentials= (
+        ('A0-A4', 23, 'A0', 'A4', 1),
+        ('A1-A4', 22, 'A1', 'A4', 1),
+        ('A2-A4', 21, 'A2', 'A4', 1),
+        ('A3-A4', 20, 'A3', 'A4', 1),
+        ('10(A4-A5)', 9, 'A4', 'A5', 10),
+        ('40(A4-A5)', 38, 'A4', 'A5', 40),
+        ('200(A4-A5)', 11, 'A4', 'A5', 200),
+        ('A5-A4', 16, 'A5', 'A4', 1),
+        ('10(A3-A5)', 40, 'A3', 'A5', 10),
+        ('10(A2-A5)', 41, 'A2', 'A5', 10),
+        ('10(A1-A5)', 42, 'A1', 'A5', 10),
+        ('10(A0-A5)', 43, 'A0', 'A5', 10),
+        ('10(A3-A4)', 44, 'A3', 'A4', 10),
+        ('10(A2-A4)', 45, 'A2', 'A4', 10),
+        ('10(A1-A4)', 46, 'A1', 'A4', 10),
+        ('10(A0-A4)', 47, 'A0', 'A4', 10),
+        ('40(A3-A5)', 48, 'A3', 'A5', 40),
+        ('40(A2-A5)', 49, 'A2', 'A5', 40),
+        ('40(A1-A5)', 50, 'A1', 'A5', 40),
+        ('40(A0-A5)', 51, 'A0', 'A5', 40),
+        ('40(A3-A4)', 52, 'A3', 'A4', 40),
+        ('40(A2-A4)', 53, 'A2', 'A4', 40),
+        ('40(A1-A4)', 54, 'A1', 'A4', 40),
+        ('40(A0-A4)', 55, 'A0', 'A4', 40),
+        ('200(A3-A5)', 56, 'A3', 'A5', 200),
+        ('200(A2-A5)', 57, 'A2', 'A5', 200),
+        ('200(A1-A5)', 58, 'A1', 'A5', 200),
+        ('200(A0-A5)', 59, 'A0', 'A5', 200),
+        ('200(A3-A4)', 60, 'A3', 'A4', 200),
+        ('200(A2-A4)', 61, 'A2', 'A4', 200),
+        ('200(A1-A4)', 62, 'A1', 'A4', 200),
+        ('200(A0-A4)', 63, 'A0', 'A4', 200))    
     eint = (
         ('D0', 2),
         ('D1', 3),
@@ -215,9 +354,10 @@ class Arduino32u4(ArduinoAVR):
         ('External', 0),
         ('2.56V', 3))
 
-@Board.supported
+@Board.supported(5)
 class FreedomKL25(Board):
     names = ('FRDM-KL25Z',)
+    bandgap = 1.0
     analogs = (
         ('PTB0', 8),
         ('PTB1', 9),
@@ -235,8 +375,6 @@ class FreedomKL25(Board):
         ('PTE23', 7),
         ('PTE29', 68),
         ('PTE30', 23),
-        ('Diff/PTE20-PTE21', 32),
-        ('Diff/PTE22-PTE23', 35),
         ('Temperature', 26),
         ('Bandgap', 27),
         ('Aref', 29)) # todo: internal differentials
@@ -247,6 +385,9 @@ class FreedomKL25(Board):
             ('D', (0, 1, 2, 3, 4, 5, 6, 7)),
             ('E', (0, 1, 2, 3, 4, 5, 20, 21, 22, 23, 30, 31))
         )) for pin in port[1])
+    differentials=(
+        ('PTE20-PTE21', 32),
+        ('PTE22-PTE23', 35))
     eint = tuple(x for x in digitals if x[0][2] in ('A', 'D'))
     intsense = (
         ('rises', 1),
@@ -265,12 +406,17 @@ class FreedomKL25(Board):
         ('8', 5),
         ('16', 6),
         ('32', 7))
-    analog_signed = (
-        'Diff/PTE20-PTE21',
-        'Diff/PTE22-PTE23')
+    default_avg='4'
+    
     timestamp_res = 1/24e6 # approximately 0.04 microseconds
-    #power_voltage = 3.3
+
     def timer_calc(self, period):
+        """computes counter parameters
+                n is index for prescaler
+                reload is counter period-1 in prescaled ticks
+                actual time in seconds
+            returns (actual, (n,reload))
+        """
         # using SysTick
         base = 1./48000000
         if period <= (1<<24)*base:
@@ -282,11 +428,16 @@ class FreedomKL25(Board):
         reload = limit(round(period / (pr * base)) - 1, 1, (1<<24)-1)
         actual = (reload + 1) * pr * base
         return actual, (n, reload)
+    
     def setup(self, model):
-        self.power_voltage = 65536./(unpack_from('<H', model)[0])
+        """unpacks model information sent from model info command
+            and updates parameters for power_voltage
+        """
+        self.power_voltage = 65536./(unpack_from('<H', model)[0]/self.bandgap)
 
 def getboardinfo(model):
     boardnum = unpack_from('<H', model)[0]
-    board = Board.by_id[boardnum-1]()
+    board = Board.by_id[boardnum]()
+#    print("DEBUG: boardnum=", boardnum, "names=", board.names, file=sys.stderr)
     board.setup(model[2:])
     return board

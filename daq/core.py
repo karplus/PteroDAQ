@@ -1,85 +1,209 @@
+from __future__ import division, print_function
+
+import sys
 import struct
 from datetime import datetime
+from collections import namedtuple
+
 from comm import CommPort, tobytes, tostr
 from boards import getboardinfo
 
+
+#  PROTOCOL
+# Every command communication consists of a command from the host
+#       computer followed by a response from the microcontroller board.
+# Most commands result in a single response packet.
+# Exceptions:
+# 'G' results in a stream of data packets (one per triggering) until
+#       'S' (for "stop") is sent.
+# 'S' may result in two stop responses (final one after queue has emptied)
+#
+#  command format: '!' + command + length + data + checksum
+#    command: 1 byte for message meaning
+#    length: 1 byte for length of data only (required even if zero)
+#    data: array of bytes, interpretation depends on command
+#    checksum: 1 byte such that modulo 256 sum of entire msg
+#       (including '!', command, length, and checksum) is zero
+#
+#  For most commands, the response is a packet in the same format:
+#       '!' + command + length + data + checksum
+#  with the command byte in the response being the same as in
+#  the command being responded to.
+#
+#  Data response format after 'G' or 'I' commands have a different format
+#        '*' + len+ Timestamp + data + checksum
+#       len is number of bytes in (timestamp+data)
+#       Timestamp is 4-byte serial number (in timed trigger) or
+#               8-byte time in F_CPU ticks (in interrupt trigger)
+#       data: array of bytes
+#       checksum: 1 byte such that modulo 256 sum of entire packet
+#               (including '*', len, timestamp, data, and checksum) is zero
+#
+#       Analog channels are sent first (2 bytes each, low-order first)
+#       Then digital channels are sent, packed 8-channels per byte
+#       with ith digital channel in (1<<(i-1))
+#
+#  The board can also report an Error with an E packet:
+#       '!E' + len + message + chk
+#  The error message must be at least 1 byte, starting with an error code.
+#       Codes:
+#       1       The interrupt handler had an interrupt pending
+#               when the handler ended---too fast a sampling rate
+#               or edge triggers too close together.
+#  
+#  Commands that have no data argument, so are !+command+0+checksum:
+#      H handshake (reset)
+#          response should always be ! H 0x03 D A Q 0xbe
+#      V version
+#          response should always be version of software (beta2):
+#          ! V 0x5 b e t a 2 0xb6
+#      M model info
+#          response should be the board model (one of the names recognized by
+#      S stop
+#          response should be ! S 0x00 0x8C
+#      I individual read
+#          forces single triggger event, generating single data packet
+#      G go
+#          starts interrupts (based on previously sent configuration)
+#          and sends data packets until stopped by 'S' command.
+#
+#
+# Commands that send information to the boards
+#      C config sends the following data:
+#         Trigger information:
+#           1, clock_prescale(1 byte),clock_value (4 bytes)       for timed trigger
+#           2, trigger_sense (1 byte board-specific code for rise/fall/change),trigger_pin (1 byte)
+#           Add 0x10 to first byte to require a serial flush after each data packet 
+#         Analog reference code (1-byte, board specific)
+#         Code for hardware averaging (1-byte, board-specific)
+#         2-byte probe number for each channel
+#               low-order byte encodes analog=1,digital=2
+#               high-order byte encodes mux value for analog or pin for digital
+#
+
+# TO DO:
+#       Change response to "!S" so that stop responds with information
+#          about how much of queue remains to be emptied?
+#
+#       Consider change to data packets when running timed triggers to use
+#          same time format as edge-triggered packets.  Could be used to
+#          get real time of interrupts on KL25Z.
+#
+#       Consider changing trigger_error to allow list of errors        
+
+
+
+class Interpretation(namedtuple('Interpretation', 
+                ['is_analog', 'is_signed', 'downsample', 'gain'])):
+    """ information needed for interpreting a data stream
+    is_analog: (Boolean) treat as an analog value, rather than digital input
+    is_signed: (Boolean) treat as 2's-complement, rather than unsigned value
+    downsample: (int) keep only every nth value if downsample==n
+    gain: divide read value down by gain to compensate for hardware amplifier
+    """
+
+class ChannelDescriptor(namedtuple('ChannelDescriptor',
+                ['name', 'probe', 'interpretation'])):
+    """provides all the information needed about a channel
+    to send configuration strings to a DAQ board and
+    interpret the returned data stream.
+    
+    name: string used for annotating saved data 
+    probe: analog mux value or digital pin number, already encoded
+        for sending to boards
+    interpretation: see Interpretation class above
+    """
+    def volts(self,raw_value, aref):
+        return raw_value/65536.*aref/self.interpretation.gain
+
 class TriggerTimed(object):
     def __init__(self, period):
-        self.period = period
+        self.period = period    # period in seconds
 class TriggerPinchange(object):
     def __init__(self, pin, sense):
         self.pin, self.sense = pin, sense
-class AnalogChannel(object):
-    def __init__(self, name, pin, signed=False, downsample=1):
-        self.name, self.pin, self.signed = name, pin, signed
-        self.downsample = downsample
-class DigitalChannel(object):
-    def __init__(self, name, pin, downsample=1):
-        self.name, self.pin = name, pin
-        self.downsample = downsample
-
 
 class DataAcquisition(object):
     def __init__(self):
         self._data = []
-        self._nextdata = 0
-        self._timeoffset = None
-    def connect(self, port, cb):
-        #print('enter daq.connect')
-        self._conncall = cb
-        self.comm = CommPort(port, self._parsedata, self._onconnect)
+        self.num_saved = 0      # how long was self._data when self.save() was last run
+        self._timeoffset = None         # timestamp of first data packet received (sets 0 time)
+        self.trigger_error=None         # error message to display on gui for triggering errors
+    
+    def is_timed_trigger(self):
+        return self.conf and isinstance(self.conf[0], TriggerTimed)
+    
+    def connect(self, port, call_when_done):
+        """non-blocking attempt to connect to DAQ at port
+        Failing connection will call call_when_done with a string error message.
+        Successful connection will call call_when_done with None.
+        """
+#        print('DEBUG: enter daq.connect', file=sys.stderr)
+        self._conncall = call_when_done
+        self.comm = CommPort(port, self._parsedata, self._onconnect, self._onerror)
         self.comm.connect()
     def go(self):
+        self.trigger_error=None
+        self.data_length_before_go = len(self._data)
         self.comm.command('G')
+    def oneread(self):
+        self.trigger_error=None
+        self.data_length_before_go = len(self._data)
+        self.comm.command('I')
     def stop(self):
         self.comm.command('S')
+        # redo the setup to remeasure supply voltage
+        model = self.comm.command('M')
+        self.board.setup(model[2:])
     def config(self, conf):
         confsend = bytearray()
         trigger, aref, avg, channels = conf
         #print('conf', conf)
         self.conf = conf
+        if  hasattr(self,'channels') and len(self.channels) != len(channels):
+            self.clear()        # new config means old data is unusable
         self.channels = channels
+        num_analog = sum(1 for ch in channels if ch.interpretation.is_analog)
+        num_digital = len(channels)-num_analog
         if isinstance(trigger, TriggerTimed):
+            data_packet_length = 7 + 2*num_analog + (num_digital+7)//8
+            bytes_per_sec =  (1./trigger.period)*data_packet_length
+            buffer_per_sec = bytes_per_sec/63
+            force_flush = 0x10 if buffer_per_sec < 20 else 0
             clkdiv, clkval = self.board.timer_calc(trigger.period)[1]
-            confsend.extend(struct.pack('<BBL', 1, clkdiv, clkval))
+            confsend.extend(struct.pack('<BBL', force_flush | 1, clkdiv, clkval))
         elif isinstance(trigger, TriggerPinchange):
             sense = next(x[1] for x in self.board.intsense if x[0] == trigger.sense)
             pin = next(x[1] for x in self.board.eint if x[0] == trigger.pin)
-            confsend.extend(struct.pack('<BBB', 2, sense, pin))
+            force_flush =0x10   # always force flush---don't know when next pin interrupt will be
+            confsend.extend(struct.pack('<BBB', force_flush | 2, sense, pin))
         arefnum = next(x[1] for x in self.board.aref if x[0] == aref)
         confsend.append(arefnum)
         confsend.append(next(x[1] for x in self.board.avg if x[0] == avg))
         for ch in channels:
-            if isinstance(ch, AnalogChannel):
-                confsend.append(1)
-                confsend.append(next(x[1] for x in self.board.analogs if x[0] == ch.pin))
-            elif isinstance(ch, DigitalChannel):
-                confsend.append(2)
-                confsend.append(next(x[1] for x in self.board.digitals if x[0] == ch.pin))
-        print('confsend', confsend)
+            probe = ch.probe
+            confsend.append(probe& 0xff)
+            confsend.append(probe >> 8)
+#        print('DEBUG: confsend', confsend, file=sys.stderr)
         self.comm.command('C', bytes(confsend))
-    def oneread(self):
-        self.comm.command('I')
-    def new_data(self):
-        ld = len(self._data)
-        res = self._data[self._nextdata:ld]
-        self._nextdata = ld
-        return res
+    def data(self):
+        return self._data
     def clear(self):
         self._data = []
-        self._nextdata = 0
         self._timeoffset = None
-    def save(self, fn, notes, convvolts):
-        if convvolts:
-            scale = self.board.power_voltage / 65535
-            fmt = '.6f'
-        else:
-            scale = 1
-            fmt = 'd'
+        self.trigger_error=""
+        self.num_saved=0
+    def save(self, fn, notes, convvolts, channels):
+        """save the stored date into file named fn
+                adding notes to the metadata header.
+           If convvolts is true, scale by board.power_voltage
+              to report measurements in volts.
+        """
+        scale = self.board.power_voltage / 65536.
         with open(fn, 'w') as f:
             f.write('# PteroDAQ recording\n')
-            f.write('# {:%H:%M:%S, %d %b %Y}\n'.format(datetime.now()))
-            if isinstance(self.conf[0], TriggerTimed):
+            f.write('# {:%Y %b %d %H:%M:%S}\n'.format(datetime.now()))
+            if self.is_timed_trigger():
                 f.write('# Recording every {} sec ({} Hz)\n'.format(self.conf[0].period, 1./self.conf[0].period))
             elif isinstance(self.conf[0], TriggerPinchange):
                 f.write('# Recording when {} {}\n'.format(self.conf[0].pin, self.conf[0].sense))
@@ -89,32 +213,52 @@ class DataAcquisition(object):
             if convvolts:
                 f.write('# Scale: 0 to {:.4f} volts\n'.format(self.board.power_voltage))
             else:
-                f.write('# Scale: 0 to 65536\n')
+                f.write('# Scale: 0 to 65535\n')
             f.write('# Recording channels:\n')
-            for ch in self.channels:
-                f.write('#   {} : {}\n'.format(ch.name, ch.pin))
+            f.write('#   timestamp (in seconds)\n')
+            
+            # use passed-in channels for names, rather than the ones saved
+            for ch_name,ch_probe in zip(channels,self.channels):
+                f.write('#   {} : {}\n'.format(ch_name.name, 
+                        self.board.name_from_probe[ch_probe.probe]))
             f.write('# Notes:\n')
             for ln in notes.split('\n'):
                 f.write('#   {}\n'.format(ln))
+            f.write('# {} samples\n'.format(len(self._data)))
+            old_time=0
             for d in self._data:
-                f.write(format(d[0], '.7f')) # timestamp
+                if float(d[0])<old_time:
+                    f.write('\n')   # blank line if back in time
+                old_time=float(d[0])
+                f.write('{:.7f}'.format(d[0])) # timestamp
                 for n, x in enumerate(d[1:]):
+                    ch = self.channels[n]
                     f.write('\t')
-                    if isinstance(self.channels[n], AnalogChannel):
-                        if self.channels[n].signed:
-                            f.write(format(x*scale*2, fmt))
-                        else:
-                            f.write(format(x*scale, fmt))
+                    if convvolts and ch.interpretation.is_analog:
+                        f.write(format(ch.volts(x,self.board.power_voltage), '.6f'))
                     else:
                         f.write(str(int(x)))
                 f.write('\n')
+        self.num_saved = len(self._data)
+    
     def _onconnect(self):
-        #print('enter daq._onconnect')
-        try:
-            hs = self.comm.command('H')
-        except RuntimeError:
-            self._conncall('Handshake timed out. Check if PteroDAQ firmware is installed.')
-            return
+        """A callback routine for handshake and other initial communication
+        after as serial connection has been made.
+        
+        Either initializes connection or displays an error using _conncall.
+        """
+#        print('DEBUG: enter daq._onconnect',file=sys.stderr)
+        handshake_tries = 0
+        while True:
+            try:
+                hs = self.comm.command('H')
+            except RuntimeError:
+                handshake_tries += 1
+                if handshake_tries>=3:
+                    self._conncall('Handshake timed out. Check if PteroDAQ firmware is installed.')
+                    return
+                continue
+            break
         if hs != b'DAQ':
             self._conncall('Handshake failed. Check if PteroDAQ firmware is installed.')
             return
@@ -125,12 +269,32 @@ class DataAcquisition(object):
         model = self.comm.command('M')
         self.board = getboardinfo(model)
         self._conncall(None)
+    
+    def _onerror(self, err_bytes):
+        """A callback routine for handling error packets (that started with !E).
+        """
+        if len(err_bytes)==0:
+            raise RuntimeError("ERROR: empty error packet received.")
+        if err_bytes[0]==1:
+            # triggering too fast, interrupt handler can't keep up
+            self.trigger_error="triggering too fast, next trigger before finished"
+        elif err_bytes[0]==2:
+            # Illegal trigger type requested of board
+            raise RuntimeError("Error: illegal trigger type requested: {}".format(err_bytes[1]))
+    
     def _parsedata(self, rd):
-        print('dat', rd)
-        if isinstance(self.conf[0], TriggerTimed):
+        # print('DEBUG: dat', repr(rd), file=sys.stderr)
+        if not hasattr(self,'conf'):
+            # No configuration sent yet.  Old packet in queue
+            print("Warning: ignoring data packet before configuration set",file=sys.stderr)
+            return
+        if self.is_timed_trigger():
             ts = struct.unpack_from('<L', rd)[0]
             ts *= self.conf[0].period
             pos = 4
+### commented out: now checked in gui (update_data())
+#            if self._data and ts > self._data[-1][0]+1.5*self.conf[0].period:
+#                self.trigger_error="too fast for USB queue, packets dropped"
         else:
             ts = struct.unpack_from('<Q', rd)[0]
             if self._timeoffset is None:
@@ -142,10 +306,10 @@ class DataAcquisition(object):
         results = [ts] + [None] * len(self.channels)
         digcount = 0
         for n, ch in enumerate(self.channels, 1):
-            if isinstance(ch, AnalogChannel):
-                results[n] = struct.unpack_from('<h' if ch.signed else '<H', rd, pos)[0]
+            if ch.interpretation.is_analog:
+                results[n] = struct.unpack_from('<h' if ch.interpretation.is_signed else '<H', rd, pos)[0]
                 pos += 2
-            elif isinstance(ch, DigitalChannel):
+            else:
                 digcount += 1
                 if not (digcount % 8):
                     digbuf.append(rd[pos])
@@ -162,6 +326,6 @@ class DataAcquisition(object):
                     bitcount = 0
                     bufpos += 1
         for n in range(len(self.channels)):
-            if len(self._data) % self.channels[n].downsample:
+            if len(self._data) % self.channels[n].interpretation.downsample:
                 results[n+1] = self._data[-1][n+1]
         self._data.append(results)

@@ -34,8 +34,18 @@ static bool adc_calib(void) {
 void adc_init(void) {
     SIM->SCGC6 |= SIM_SCGC6_ADC0_MASK; // clock gate enable
     adc_calib();
-    ADC0->CFG1 &= ~(ADC_CFG1_ADLSMP_MASK|ADC_CFG1_ADICLK_MASK); // short sample time, bus clock
+    // bus clock is 24MHz
+    // set conversion rate at bus clock/4 with short sample times
+    // That sets ADCK to 6MHz
+    ADC0->CFG1 = 
+        ADC_CFG1_MODE(3) | // sixteen-bit
+        ADC_CFG1_ADIV(2); // clock divide four
+    ADC0->CFG2 = 0;
     ADC0->SC3 &= ~ADC_SC3_AVGE_MASK; // no hardware averaging
+    // Conversion time is (num_avg*(25) + 5)*4 + 5 bus clocks for single-ended
+    //      (num_avg*(34) + 5)*4 + 5 bus clocks for differential
+    //
+    // for example, 32x single-ended: 3225 cycles or 134.4 us
 }
 
 void adc_aref(uint8_t choice) {

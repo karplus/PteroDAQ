@@ -16,26 +16,27 @@ void adc_init(void) {
         DIDR1 = 0xFF;
     #endif
     
-    // adjust clock prescale to keep below 200 kHz
-    #if F_CPU > 12800
+    // adjust clock prescale to keep within 50kHz to 200 kHz
+    #if F_CPU >  12800000
         ADCSRA = 7; // prescale by 128
-    #elif F_CPU > 6400
+    #elif F_CPU > 6400000
         ADCSRA = 6; // prescale by 64
-    #elif F_CPU > 3200
+    #elif F_CPU > 3200000
         ADCSRA = 5; // prescale by 32
-    #elif F_CPU > 1600
+    #elif F_CPU > 1600000
         ADCSRA = 4; // prescale by 16
-    #elif F_CPU > 800
+    #elif F_CPU >  800000
         ADCSRA = 3; // prescale by 8
-    #elif F_CPU > 400
+    #elif F_CPU >  400000
         ADCSRA = 2; // prescale by 4
-    #elif F_CPU >= 100
+    #elif F_CPU >= 100000
         ADCSRA = 1; // prescale by 2
     #else
         #warning "F_CPU too low for ADC operation"
     #endif
     
     // set external aref to avoid shorts
+    // And turn on the ADC
     adc_aref(0);
 }
 
@@ -48,9 +49,10 @@ void adc_aref(uint8_t choice) {
         ADCSRB = 0;
     #endif
     
-    // conversion to let aref settle
+    // conversion (reading bandgap) to let aref and bandgap settle
     ADCSRA |= _BV(ADEN)|_BV(ADSC); // enable, start conversion
     loop_until_bit_is_clear(ADCSRA, ADSC);
+
 }
 
 void adc_avg(uint8_t choice) {
@@ -61,11 +63,9 @@ uint16_t adc_read(uint8_t mux) {
     uint8_t low;
     
     #if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
-        ADMUX &= ~0xF;
-        ADMUX |= mux;
+        ADMUX = (ADMUX & ~0xF) | mux;
     #else
-        ADMUX &= ~0x1F;
-        ADMUX |= (mux & 0x1F);
+        ADMUX = (ADMUX & ~0x1F) | (mux & 0x1F);
         ADCSRB = ((mux & 0x20) >> 5) << MUX5;
     #endif
     
@@ -77,4 +77,3 @@ uint16_t adc_read(uint8_t mux) {
 }
 
 #endif
-

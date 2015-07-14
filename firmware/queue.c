@@ -1,12 +1,16 @@
 #include "queue.h"
 
+#if PLAT_ATMEGA
+#define QUEUE_SIZE 1024
+#elif PLAT_KINETIS
 #define QUEUE_SIZE 8192
+#endif
 
-uint8_t queue_data[QUEUE_SIZE];
-uint16_t queue_head, queue_tail;
-bool queue_wrotelast;
-uint8_t queue_bitcache;
-uint8_t queue_bitcachepos;
+static volatile uint8_t queue_data[QUEUE_SIZE];
+static volatile uint16_t queue_head, queue_tail;
+static volatile bool queue_wrotelast;
+static volatile uint8_t queue_bitcache;
+static volatile uint8_t queue_bitcachepos;
 
 void queue_push(uint8_t x) {
     queue_data[queue_head] = x;
@@ -20,11 +24,14 @@ void queue_push16(uint16_t x) {
     queue_push(x >> 8);
 }
 
-void queue_push64(uint64_t x) {
+void queue_push32(uint32_t x) {
     queue_push16(x & 0xFFFF);
-    queue_push16((x >> 16) & 0xFFFF);
-    queue_push16((x >> 32) & 0xFFFF);
-    queue_push16(x >> 48);
+    queue_push16(x >> 16);
+}
+
+void queue_push64(uint64_t x) {
+    queue_push32(x & 0xFFFFFFFF);
+    queue_push32(x >> 32);
 }
 
 void queue_aggregate_bits(void) {
@@ -55,14 +62,19 @@ uint16_t queue_space(void) {
 }
 
 bool queue_avail(void) {
-    return (queue_wrotelast) || (queue_head != queue_tail);
+    DISABLE_INTERRUPT();
+    bool avail = (queue_wrotelast) || (queue_head != queue_tail);
+    ENABLE_INTERRUPT();
+    return avail;
 }
 
 uint8_t queue_pop(void) {
+    DISABLE_INTERRUPT();
     uint8_t x = queue_data[queue_tail];
     queue_tail += 1;
     queue_tail %= QUEUE_SIZE;
     queue_wrotelast = false;
+    ENABLE_INTERRUPT();
     return x;
 }
 

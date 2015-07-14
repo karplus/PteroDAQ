@@ -15,6 +15,16 @@ void tim_cancel(void) {
     SysTick->CTRL = 0; // stop timer
 }
 
+bool tim_pending(void) {
+    // return 1 if there is an interrupt pending since the last time 
+    // SysTick->CTRL was read.
+    
+    // Calling tim_pending at the beginning of a SysTick handler
+    // and again at the end lets you know whether another interrupt should have
+    // happened while the handler was running.
+    return (SysTick->CTRL & SysTick_CTRL_COUNTFLAG_Msk) !=0;
+}
+
 void tim_watch(void) {
     SIM->SCGC6 |= SIM_SCGC6_PIT_MASK; // clock gate enable
     PIT->MCR = 0; // enable pit
@@ -31,8 +41,8 @@ uint64_t tim_time(void) {
 }
 
 void SysTick_Handler(void) {
+    uint8_t pending=tim_pending();	// read SysTick>CTRL, to clear COUNTFLAG
     trigger_handler();
 }
 
 #endif
-
