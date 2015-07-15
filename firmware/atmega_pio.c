@@ -69,7 +69,7 @@ void pio_trigger(uint8_t pin, uint8_t sense) {
     }
 }
 
-void pio_cancel(void) {
+void pio_cancel(uint8_t pin) {
     EIMSK = 0; // disable
 }
 
@@ -95,5 +95,3 @@ ISR(INT7_vect, ISR_ALIASOF(INT0_vect));
 #endif
 
 #endif
-
-

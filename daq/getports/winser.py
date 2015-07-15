@@ -183,7 +183,9 @@ class Serial(object):
         n = wt.DWORD()
         k32.WriteFile(self.fd, d, len(d), c.byref(n), self._ovw)
         k32.GetOverlappedResult(self.fd, self._ovw, c.byref(n), True)
-        return n.value # TODO retry until all sent?
+        return n.value 
+        # TO DO: retry until all sent?  Not currently failing,
+        # so no retry attempted
     
     def close(self):
         k32.SetCommTimeouts(self.fd, c.byref(self._initial_timeouts))

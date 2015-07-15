@@ -239,7 +239,7 @@ class ArduinoMega(ArduinoAVR):
         ('D10', 20),
         ('D11', 21),
         ('D12', 22),
-        ('D13', 23)) # todo: finish
+        ('D13', 23)) # To Do: finish listing Mega digitals
     eint = (
         ('D2', 4),
         ('D3', 5),
@@ -377,7 +377,7 @@ class FreedomKL25(Board):
         ('PTE30', 23),
         ('Temperature', 26),
         ('Bandgap', 27),
-        ('Aref', 29)) # todo: internal differentials
+        ('Aref', 29)) # To Do: internal differentials?
     digitals = tuple(('PT{}{}'.format(port[0], pin), (n * 32 + pin)) for n, port in enumerate((
             ('A', (1, 2, 4, 5, 12, 13, 14, 15, 16, 17)),
             ('B', (0, 1, 2, 3, 8, 9, 10, 11)),

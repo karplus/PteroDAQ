@@ -372,6 +372,8 @@ def main(e=None):
         channel_canvas.update_idletasks()
         channel_canvas.yview_moveto(1)
     
+    def power_voltage_str():
+        return 'Supply voltage: {:.4f}'.format(daq.board.power_voltage)
     def startrec(e=None):
         """Action to take when "Record" butting is pressed
         """
@@ -384,8 +386,6 @@ def main(e=None):
         errorlabel.grid_forget()
         daq.config(makeconf())
         daq.go()
-    def power_voltage_str():
-        return 'Supply voltage: {:.4f}'.format(daq.board.power_voltage)
     def pauserec(e=None):
         """Action to take then "Pause" button is pressed
         """
@@ -415,7 +415,7 @@ def main(e=None):
             if save_before_quit:
                 if not savefile():
                     return      # save dialog cancelled
-            root.destroy()
+        root.destroy()
         
     def savefile(e=None):
         """Asks if you want to save file, using last_file_saved
@@ -585,7 +585,9 @@ def main(e=None):
         if daq.trigger_error:
             errorlabel['text']= 'Warning: '+daq.trigger_error
             errorlabel.grid(row=0, column=0)
-        elif freeze_count and daq.is_timed_trigger():
+        elif freeze_count \
+        	and freeze_count > daq.data_length_before_go \
+                and daq.is_timed_trigger():
             # check for dropped packets in time stream
             implied_packets = daq.data_length_before_go \
                 + int(daq.data()[freeze_count-1][0]/ daq.conf[0].period  +1.1)
@@ -593,6 +595,8 @@ def main(e=None):
             if implied_packets>freeze_count:
                 errorlabel['text'] = "Warning: {} packets dropped".format(implied_packets - freeze_count)
                 errorlabel.grid(row=0, column=0)
+            else:
+                errorlabel.grid_forget()
         else:
             errorlabel.grid_forget()
         
@@ -606,7 +610,26 @@ def main(e=None):
 #    root.resizable(False, False)
     root.tk.createcommand('scrollcan', scrollcan)
     root.bind_all('<MouseWheel>', 'scrollcan %D')
-    root.protocol("WM_DELETE_WINDOW", on_closing)
+    
+    # handle quits caused by deleting the window
+    root.protocol('WM_DELETE_WINDOW', on_closing)
+    
+    #handle quits caused by keyboard shortcut
+    root.createcommand('exit',on_closing)
+    
+    # On Macs, allow the dock icon to deiconify.
+    root.createcommand('::tk::mac::ReopenApplication',root.deiconify)
+    
+    # On Macs, set up menu bar to be minimal.
+    root.option_add('*tearOff', False)
+    windowingsystem = root.tk.call('tk', 'windowingsystem')
+    menubar = tk.Menu(root)
+    if windowingsystem == 'aqua':
+        appmenu = tk.Menu(menubar, name='apple')
+        menubar.add_cascade(menu=appmenu)
+    root['menu'] = menubar
+
+    # Run update_data after 100 ms
     root.after(100, update_data)
 
 root = tk.Tk()

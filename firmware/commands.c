@@ -10,7 +10,7 @@
 
 //  PROTOCOL
 // Every command communication consists of a command from the host
-//	computer followed by a response from the microcontroller board.
+//      computer followed by a response from the microcontroller board.
 // All commands except 'G' (for "go") result in a single response packet.
 // 'G' results in a stream of response packets (one per triggering) until
 // 'S' (for "stop") is sent.
@@ -20,7 +20,7 @@
 //    length: 1 byte for length of data only (required even if zero)
 //    data: array of bytes, interpretation depends on command
 //    checksum: 1 byte such that modulo 256 sum of entire msg
-//	(including '!', command, length, and checksum) is zero
+//      (including '!', command, length, and checksum) is zero
 //  
 //  commands:
 //  C config
@@ -46,7 +46,7 @@ struct Config {
     uint8_t trigprescale;  // code for prescale for timer clock
     uint32_t trigreload;   // counter value for resetting counter
     uint8_t trigintsense;  // Code for rise/fall/change (board-specific meanings)
-    uint8_t trigintpin;	   // pin number for trigger
+    uint8_t trigintpin;    // pin number for trigger
     uint8_t arefchoice;
     uint8_t avgana;
     uint8_t channelcount;
@@ -56,11 +56,12 @@ struct Config {
 
 #define TRIG_FLUSH_EVERY (0x10)  // bit in trigtype to require flush after every data packet
 
-volatile uint16_t trigger_error_count;   
+static volatile uint16_t trigger_error_count;   
     // increment if there is a pending trigger at the end of trigger handler
-    
-// TO DO:
-
+  
+static volatile uint32_t readcount = 0;
+    // how many timer interrupts for psuedo-timer have there been.
+  
 void daq_setup(void) {
     adc_init();
     pio_init();
@@ -88,23 +89,22 @@ void output_data(void) {
 
 // report an error with code, and optionally, up to 254 extra bytes of data
 void report_error(uint8_t code, uint8_t extra_len, uint8_t *extra_data){
-	// report an error by sending an error packet
-	uint8_t chk = '!' + 'E'+extra_len+1+code;
-	ser_putc('!');
-	ser_putc('E');
-	ser_putc(extra_len+1);
-	ser_putc(code);
-	uint8_t index;
-	for(index=0; index<extra_len; index++){
-		ser_putc(extra_data[index]);
-		chk += extra_data[index];
-	}
-	ser_putc(-chk);
-	ser_flushout();  // always flush after error messages
-	
+        // report an error by sending an error packet
+        uint8_t chk = '!' + 'E'+extra_len+1+code;
+        ser_putc('!');
+        ser_putc('E');
+        ser_putc(extra_len+1);
+        ser_putc(code);
+        uint8_t index;
+        for(index=0; index<extra_len; index++){
+                ser_putc(extra_data[index]);
+                chk += extra_data[index];
+        }
+        ser_putc(-chk);
+        ser_flushout();  // always flush after error messages
+        
 }
-	
-static volatile uint32_t readcount = 0;
+        
 // record timestamp and channels for one trigger into queue
 void trigger_handler(void) {
     uint8_t ind;
@@ -128,8 +128,8 @@ void trigger_handler(void) {
         }
     }
     queue_aggregate_bits();
-    if (tim_pending()){
-    	trigger_error_count++;
+    if (conf.trigtype == 1 && tim_pending()){
+        trigger_error_count++;
     }
 }
 
@@ -151,7 +151,7 @@ void parse_config(uint8_t buf[], uint8_t len) {
         conf.trigintpin = buf[ind++];
         datalen = 8;
     } else {
-    	report_error(0x2,1,&(conf.trigtype));  //trigger type not recognized
+        report_error(0x2,1,&(conf.trigtype));  //trigger type not recognized
     }
     // aref
     conf.arefchoice = buf[ind++];
@@ -168,31 +168,36 @@ void parse_config(uint8_t buf[], uint8_t len) {
     }
     conf.channelcount = chnum;
     datalen += (digcount + 7)/8;
+
 }
 
-void start_running(void) {
+void prepare_to_run(void){
+    // do all the setup to start running, but don't start interrupts
     adc_aref(conf.arefchoice);
     adc_avg(conf.avgana);
     trigger_error_count = 0;
+}
+
+void start_running(void) {
+    // start a run with the timers reset
     if (conf.trigtype == 1) {
-	    readcount=0;	// restart the timer at 0,
-			// since timer wasn't runing while the data 
-			// not being recorded.
-	    tim_trigger(conf.trigprescale, conf.trigreload);
+        readcount=0;    // restart pseudotimer
+        tim_trigger(conf.trigprescale, conf.trigreload);
     } else if (conf.trigtype == 2) {
-        tim_watch();	// restart the timer at 0
+        tim_watch();    // restart timer
         pio_trigger(conf.trigintpin, conf.trigintsense);
     } else {
-    	report_error(0x2,1,&(conf.trigtype));  //trigger type not recognized
+        report_error(0x2,1,&(conf.trigtype));  //trigger type not recognized
     }
+    
 }
 
 void stop_running(void) {
     tim_cancel();
-    pio_cancel();
+    pio_cancel(conf.trigintpin);
     while (queue_avail()) {
-    	// empty the queue
-    	output_data();
+        // empty the queue
+        output_data();
     }
     ser_flushout();
 }
@@ -231,18 +236,22 @@ void handle_command(void) {
             parse_config(buf, len);
             break;
         case 'G':
+            prepare_to_run();
             start_running();
             break;
         case 'S':
             stop_running();
             break;
         case 'I':
+            prepare_to_run();
             trigger_handler();
             break;
         case 'H':
             stop_running();
             queue_clear();
-	    LED_handshake();
+            readcount=0;    // reset counter for pseudotimer
+            tim_watch();    // reset timer
+            LED_handshake();
             resp = HANDSHAKE_CODE;
             resplen = sizeof(HANDSHAKE_CODE) - 1;
             break;
@@ -271,10 +280,9 @@ void daq_loop(void) {
         handle_command();
     }
     if ((trigger_error_count & 0x3FF)==1){
-    	// Every 1024 trigger errors (trigger handler too slow),
-    	// report triggering error 
-    	report_error(0x1, 0, NULL); 
+        // Every 1024 trigger errors (trigger handler too slow),
+        // report triggering error 
+        report_error(0x1, 0, NULL); 
     }
     output_data();
 }
-

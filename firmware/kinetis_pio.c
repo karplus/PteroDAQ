@@ -33,7 +33,8 @@ void pio_trigger(uint8_t pin, uint8_t sense) {
     *pcr |= PORT_PCR_ISF_MASK | PORT_PCR_IRQC(sense | 8);
 }
 
-void pio_cancel(void) {
+void pio_cancel(uint8_t pin) {
+    ctrl_ports[pin >> 5]->PCR[pin & 0x1F] &= ~PORT_PCR_IRQC_MASK;
     NVIC_DisableIRQ(PORTA_IRQn);
     NVIC_DisableIRQ(PORTD_IRQn);
 }
@@ -48,4 +49,3 @@ void PORTD_IRQHandler(void) {
     trigger_handler();
 }
 #endif
-

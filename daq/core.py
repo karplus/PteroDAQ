@@ -82,7 +82,7 @@ from boards import getboardinfo
 #
 
 # TO DO:
-#       Change response to "!S" so that stop responds with information
+#       Consider changing response to "!S" so that stop responds with information
 #          about how much of queue remains to be emptied?
 #
 #       Consider change to data packets when running timed triggers to use
@@ -90,6 +90,8 @@ from boards import getboardinfo
 #          get real time of interrupts on KL25Z.
 #
 #       Consider changing trigger_error to allow list of errors        
+#
+#	Reduce the number of error messages to console when packets are damaged.
 
 
 
@@ -145,10 +147,11 @@ class DataAcquisition(object):
     def go(self):
         self.trigger_error=None
         self.data_length_before_go = len(self._data)
+#        print("DEBUG: starting with", self.data_length_before_go, "packets",file=sys.stderr)
         self.comm.command('G')
     def oneread(self):
         self.trigger_error=None
-        self.data_length_before_go = len(self._data)
+        self.data_length_before_go = 0	# 'I' command doesn't reset pseudo-timer
         self.comm.command('I')
     def stop(self):
         self.comm.command('S')
@@ -226,11 +229,17 @@ class DataAcquisition(object):
                 f.write('#   {}\n'.format(ln))
             f.write('# {} samples\n'.format(len(self._data)))
             old_time=0
+            time_offset=None
             for d in self._data:
-                if float(d[0])<old_time:
+                time=d[0]
+                if time_offset==None:
+                    time_offset=time
+                if time<old_time:
+                    time_offset=time
                     f.write('\n')   # blank line if back in time
-                old_time=float(d[0])
-                f.write('{:.7f}'.format(d[0])) # timestamp
+                old_time=time
+            
+                f.write('{:.7f}'.format(time-time_offset)) # timestamp
                 for n, x in enumerate(d[1:]):
                     ch = self.channels[n]
                     f.write('\t')
@@ -297,9 +306,6 @@ class DataAcquisition(object):
 #                self.trigger_error="too fast for USB queue, packets dropped"
         else:
             ts = struct.unpack_from('<Q', rd)[0]
-            if self._timeoffset is None:
-                self._timeoffset = ts
-            ts -= self._timeoffset
             ts *= self.board.timestamp_res
             pos = 8
         digbuf = bytearray()
