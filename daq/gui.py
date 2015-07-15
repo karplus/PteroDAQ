@@ -257,7 +257,12 @@ class PortSelect(object):
         btn.pack()
         port_frame.pack(fill='both', expand='yes')
     def useport(self):
-        port = self.ps[int(self.pl.selection()[0])][1]
+        treeview_selections=self.pl.selection()
+        if not treeview_selections:
+            # nothing selected (probably no board plugged in)
+            tkm.showerror("No board", "No PteroDAQ board selected---plug one in and try again")
+            return
+        port = self.ps[int(treeview_selections[0])][1]
         self.port_frame.destroy()
         self.pl.after_cancel(self.aft)
         self.cb(tostr(port))

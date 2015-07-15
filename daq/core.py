@@ -222,8 +222,15 @@ class DataAcquisition(object):
             f.write('#   timestamp (in seconds)\n')
             
             # use passed-in channels for names, rather than the ones saved
+            # but use saved for probes and downsampling
             for ch_name,ch_probe in zip(channels,self.channels):
-                f.write('#   {} : {}\n'.format(ch_name.name, 
+                downsample = ch_probe.interpretation.downsample
+                if downsample>1:
+                    f.write('#   {} : {} downsample by {}\n'.format(ch_name.name, 
+                        self.board.name_from_probe[ch_probe.probe],
+                        downsample))
+                else:
+                    f.write('#   {} : {}\n'.format(ch_name.name, 
                         self.board.name_from_probe[ch_probe.probe]))
             f.write('# Notes:\n')
             for ln in notes.split('\n'):
