@@ -444,7 +444,8 @@ def main(e=None):
         if last_file_saved:
             daq.save(last_file_saved, notes=notesbox.get('1.0', 'end'), 
                 convvolts = use_power_voltage.get(),
-                channels=[ ch.get_descriptor() for ch in ChannelWidget.byloc])
+                new_conf=makeconf()
+                )
         return last_file_saved
     
     ## define objects in controls Frame

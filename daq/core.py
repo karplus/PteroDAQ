@@ -197,23 +197,29 @@ class DataAcquisition(object):
         self._timeoffset = None
         self.trigger_error=""
         self.num_saved=0
-    def save(self, fn, notes, convvolts, channels):
+    def save(self, fn, notes, convvolts, new_conf):
         """save the stored date into file named fn
                 adding notes to the metadata header.
            If convvolts is true, scale by board.power_voltage
               to report measurements in volts.
         """
+        if hasattr(self,'conf') and self.conf:
+            use_conf=self.conf
+        else:
+            # configuration never done, probably because no data recorded yet
+            use_conf=new_conf
+            
         scale = self.board.power_voltage / 65536.
         with open(fn, 'w') as f:
             f.write('# PteroDAQ recording\n')
             f.write('# {:%Y %b %d %H:%M:%S}\n'.format(datetime.now()))
-            if self.is_timed_trigger():
-                f.write('# Recording every {} sec ({} Hz)\n'.format(self.conf[0].period, 1./self.conf[0].period))
-            elif isinstance(self.conf[0], TriggerPinchange):
-                f.write('# Recording when {} {}\n'.format(self.conf[0].pin, self.conf[0].sense))
-            f.write('# Analog reference is {}\n'.format(self.conf[1]))
-            if self.conf[2] != 1:
-                f.write('# Averaging {} readings together\n'.format(self.conf[2]))
+            if isinstance(use_conf[0], TriggerTimed):
+                f.write('# Recording every {} sec ({} Hz)\n'.format(use_conf[0].period, 1./use_conf[0].period))
+            elif isinstance(use_conf[0], TriggerPinchange):
+                f.write('# Recording when {} {}\n'.format(use_conf[0].pin, use_conf[0].sense))
+            f.write('# Analog reference is {}\n'.format(use_conf[1]))
+            if use_conf[2] != 1:
+                f.write('# Averaging {} readings together\n'.format(use_conf[2]))
             if convvolts:
                 f.write('# Scale: 0 to {:.4f} volts\n'.format(self.board.power_voltage))
             else:
@@ -221,9 +227,10 @@ class DataAcquisition(object):
             f.write('# Recording channels:\n')
             f.write('#   timestamp (in seconds)\n')
             
-            # use passed-in channels for names, rather than the ones saved
+            # Use passed-in configuration for names, rather than the ones saved
             # but use saved for probes and downsampling
-            for ch_name,ch_probe in zip(channels,self.channels):
+            # Note that channels is the last field of the configuration tuple.
+            for ch_name,ch_probe in zip(new_conf[-1],use_conf[-1]):
                 downsample = ch_probe.interpretation.downsample
                 if downsample>1:
                     f.write('#   {} : {} downsample by {}\n'.format(ch_name.name, 
@@ -309,9 +316,6 @@ class DataAcquisition(object):
             ts = struct.unpack_from('<L', rd)[0]
             ts *= self.conf[0].period
             pos = 4
-### commented out: now checked in gui (update_data())
-#            if self._data and ts > self._data[-1][0]+1.5*self.conf[0].period:
-#                self.trigger_error="too fast for USB queue, packets dropped"
         else:
             ts = struct.unpack_from('<Q', rd)[0]
             ts *= self.board.timestamp_res
