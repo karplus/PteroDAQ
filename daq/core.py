@@ -8,6 +8,7 @@ from collections import namedtuple
 from comm import CommPort, tobytes, tostr
 from boards import getboardinfo
 
+firmware_version = b'v0.2'	# code used in firmware to identify protocol version
 
 #  PROTOCOL
 # Every command communication consists of a command from the host
@@ -55,7 +56,7 @@ from boards import getboardinfo
 #      H handshake (reset)
 #          response should always be ! H 0x03 D A Q 0xbe
 #      V version
-#          response should always be version of software (beta2):
+#          response should always be version of software (e.g., 'beta2'):
 #          ! V 0x5 b e t a 2 0xb6
 #      M model info
 #          response should be the board model (one of the names recognized by
@@ -272,8 +273,8 @@ class DataAcquisition(object):
             self._conncall('Handshake failed. Check if PteroDAQ firmware is installed.')
             return
         version = self.comm.command('V')
-        if version != b'beta2':
-            self._conncall('Incorrect version: {} present, beta2 needed.'.format(version.decode('utf-8')))
+        if version != firmware_version:
+            self._conncall('Incorrect version: {} present, {} needed.'.format(tostr(version), tostr(firmware_version)))
             return
         model = self.comm.command('M')
         self.board = getboardinfo(model)

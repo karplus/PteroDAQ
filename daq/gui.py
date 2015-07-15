@@ -299,12 +299,18 @@ class PortSelect(object):
             else:
                 # failed
                 tkm.showerror('Error', startmain.fail)
+                root.destroy()
         else:
             root.after(100, self.checkstart)    # schedule another check in 100ms
 
 def startmain(fail=None):
+    """The gui thread (in checkstart()) is monitoring startmain.go to say when 
+    it should run. 
+    If startmain.fail is not None, then it shows an error and dies.
+    """
     startmain.fail = fail
     startmain.go = True
+
 startmain.go = False
 
 def doconn(port):

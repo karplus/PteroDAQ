@@ -5,7 +5,7 @@
 #include "tim.h"
 #include "LED.h"
 
-#define DAQ_VERSION "beta2"
+#define DAQ_VERSION "v0.2"	// must agree with firmware_version in Python code
 #define HANDSHAKE_CODE "DAQ"
 
 //  PROTOCOL
