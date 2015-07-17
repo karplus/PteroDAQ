@@ -3,9 +3,9 @@
 #include "queue.h"
 #include "ser.h"
 #include "tim.h"
-#include "LED.h"
+#include "led.h"
 
-#define DAQ_VERSION "v0.2"	// must agree with firmware_version in Python code
+#define DAQ_VERSION "v0.2" // must agree with firmware_version in Python code
 #define HANDSHAKE_CODE "DAQ"
 
 //  PROTOCOL

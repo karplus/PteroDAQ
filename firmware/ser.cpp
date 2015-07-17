@@ -13,7 +13,7 @@ uint8_t ser_buffer[MAX_PACKET_SIZE];
 uint8_t ser_buffer_used=0;
 
 void ser_init(void) {
-    Serial.begin(1000000);	// 1Mbaud (fastest reliable Arduino UART speed)
+    Serial.begin(1000000); // 1Mbaud (fastest reliable Arduino UART speed)
     while (!Serial); // wait for connection (32u4 only)
     ser_buffer_used=0;
 }
@@ -50,21 +50,7 @@ void ser_flushout(void) {
 //      to use the double-buffering built into the KL25Z USB interface, though, which could make
 //      it messier to use non-blocking output.
 
-class PteroDAQSerial:public USBSerial{
-    virtual uint8_t *stringIproductDesc();  // override the name of the product
-};
-
-uint8_t * PteroDAQSerial::stringIproductDesc() {
-    static uint8_t stringIproductDescriptor[] = {
-        0x12,
-        STRING_DESCRIPTOR,
-        'P',0,'t',0,'e',0,'r',0,'o',0,'D',0,'A',0,'Q',0
-    };
-    return stringIproductDescriptor;
-}
-static PteroDAQSerial _comm;
-
-
+static USBSerial _comm; //TODO change VID/PID on receiving from OpenMoko (0x1d50, 0x60cb);
 
 extern "C" {
 

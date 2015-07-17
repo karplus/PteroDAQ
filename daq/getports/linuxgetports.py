@@ -2,6 +2,7 @@
 
 import ctypes
 from ctypes.util import find_library
+import codecs
 
 ud = ctypes.CDLL(find_library('udev'))
 
@@ -28,6 +29,9 @@ ud.udev_list_entry_get_next.restype = ctypes.c_void_p
 ud.udev_enumerate_unref.argtypes = [ctypes.c_void_p]
 ud.udev_unref.argtypes = [ctypes.c_void_p]
 
+def hexdec(be):
+    return codecs.decode(be.replace(b'=',b'\\x3d').replace(b'\\x',b'='), 'quoted-printable')
+
 def portiter():
     ctx = ud.udev_new()
     en = ud.udev_enumerate_new(ctx)
@@ -39,7 +43,7 @@ def portiter():
     while itm is not None:
         name = ud.udev_list_entry_get_name(itm)
         dev = ud.udev_device_new_from_syspath(ctx, name)
-        model = ud.udev_device_get_property_value(dev, b'ID_MODEL')
+        model = hexdec(ud.udev_device_get_property_value(dev, b'ID_MODEL_ENC'))
         node = ud.udev_device_get_devnode(dev)
         yield model, node
         ud.udev_device_unref(dev)
@@ -47,18 +51,3 @@ def portiter():
     ud.udev_enumerate_unref(en)
     ud.udev_unref(ctx)
 
-# OLD
-
-#sys_prefix = b'/sys/class/tty/' # listing of all TTY devices connected
-#sys_suffix = b'/device/' # that are actual devices
-#sys_search = sys_prefix + b'*' + sys_suffix
-#dev_prefix = b'/dev/' # address for accessing such devices
-
-## you can also do a glob of /dev directly, something like '/dev/ttyS*', but that is somewhat more fragile
-
-#def portiter():
-    #for x in glob.iglob(sys_search):
-        #y = x[len(sys_prefix):-len(sys_suffix)]
-        #yield (y, dev_prefix + y)
-
-## /sys/bus/usb/devices/usb*/*/*/tty

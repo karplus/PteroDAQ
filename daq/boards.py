@@ -40,8 +40,8 @@ class Board(object):
                         # hardware averaging options for board
                         # (name of option, numeric code)
     
-    default_avg = '1'	# default averaging is to use none (averaging 1 sample)
-    			# but can be overridden in specific boards
+    default_avg = '1'   # default averaging is to use none (averaging 1 sample)
+                        # but can be overridden in specific boards
     
     timestamp_res = None # resolution of timestamps in seconds
     power_voltage = None # power supply voltage, needed for analog reference info

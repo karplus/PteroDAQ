@@ -421,7 +421,7 @@ def main(e=None):
                 "Save before quitting?")
 #            print("DEBUG: save_before_quit=",save_before_quit,file=sys.stderr)
             if save_before_quit is None:
-            	# cancel returns None
+                # cancel returns None
                 return
             if save_before_quit:
                 if not savefile():
@@ -598,7 +598,7 @@ def main(e=None):
             errorlabel['text']= 'Warning: '+daq.trigger_error
             errorlabel.grid(row=0, column=0)
         elif freeze_count \
-        	and freeze_count > daq.data_length_before_go \
+            and freeze_count > daq.data_length_before_go \
                 and daq.is_timed_trigger():
             # check for dropped packets in time stream
             implied_packets = daq.data_length_before_go \

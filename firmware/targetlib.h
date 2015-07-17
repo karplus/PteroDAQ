@@ -20,8 +20,8 @@
 #include "cmsis.h"
 #define F_CPU (48000000)
 
-#define ENABLE_INTERRUPT()	__enable_irq()
-#define DISABLE_INTERRUPT()	__disable_irq()
+#define ENABLE_INTERRUPT() __enable_irq()
+#define DISABLE_INTERRUPT() __disable_irq()
 
 #ifdef MKL25Z4_H_
 

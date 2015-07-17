@@ -16,7 +16,7 @@ void tim_watch(void) {
 }
 
 // Fetch the time since time_watch() was called
-//	returns ticks which are 8/F_CPU seconds each
+//  returns ticks which are 8/F_CPU seconds each
 uint64_t tim_time(void) {
     // complicated to avoid race conditions with timer overflows
     // in most cases, equiv to return (longticks << 16) | TCNT1
@@ -39,7 +39,7 @@ uint64_t tim_time(void) {
 }
 
 // Sets up triggering trigger handle with timing determined
-//	by prescale and reload
+//  by prescale and reload
 // The meanings of the prescale and reload are determined by the hardware
 // and directly set in commands from the host, not interpreted here.
 void tim_trigger(uint8_t prescale, uint32_t reload) {
@@ -56,8 +56,8 @@ void tim_trigger(uint8_t prescale, uint32_t reload) {
 }
 
 bool tim_pending(void){
-	// returns 1 if OCF1 has been set (so an interrupt should have occurred, but hasn't yet)
-	return (TIFR1 & _BV(OCF1A)) !=0;
+    // returns 1 if OCF1 has been set (so an interrupt should have occurred, but hasn't yet)
+    return (TIFR1 & _BV(OCF1A)) !=0;
 }
 
 void tim_cancel(void) {

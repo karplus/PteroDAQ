@@ -41,7 +41,7 @@ uint64_t tim_time(void) {
 }
 
 void SysTick_Handler(void) {
-    uint8_t pending=tim_pending();	// read SysTick>CTRL, to clear COUNTFLAG
+    uint8_t pending = tim_pending(); // read SysTick>CTRL, to clear COUNTFLAG
     trigger_handler();
 }
 

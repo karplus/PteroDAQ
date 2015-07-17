@@ -8,7 +8,7 @@ from collections import namedtuple
 from comm import CommPort, tobytes, tostr
 from boards import getboardinfo
 
-firmware_version = b'v0.2'	# code used in firmware to identify protocol version
+firmware_version = b'v0.2' # code used in firmware to identify protocol version
 
 #  PROTOCOL
 # Every command communication consists of a command from the host
@@ -92,7 +92,7 @@ firmware_version = b'v0.2'	# code used in firmware to identify protocol version
 #
 #       Consider changing trigger_error to allow list of errors        
 #
-#	Reduce the number of error messages to console when packets are damaged.
+#       Reduce the number of error messages to console when packets are damaged.
 
 
 
@@ -152,7 +152,7 @@ class DataAcquisition(object):
         self.comm.command('G')
     def oneread(self):
         self.trigger_error=None
-        self.data_length_before_go = 0	# 'I' command doesn't reset pseudo-timer
+        self.data_length_before_go = 0 # 'I' command doesn't reset pseudo-timer
         self.comm.command('I')
     def stop(self):
         self.comm.command('S')

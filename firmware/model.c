@@ -6,15 +6,15 @@
 
 // returns a pointer to a static response byte array
 // that has been loaded with
-//	16-bit words (LSB-first)
-//	[0,1]	board model
-//		1	Uno equivalent
-//		2	Fio equivalent
-//		3	Mega equivalent
-//		4	Leonardo equivalent
-//		5	KL25Z
-//	[2,3]	Bandgap raw ADC reading
-//	[4,5]	CPU frequency in kHz (Arduino only)
+//  16-bit words (LSB-first)
+//  [0,1]   board model
+//     1    Uno equivalent
+//     2    Fio equivalent
+//     3    Mega equivalent
+//     4    Leonardo equivalent
+//     5    KL25Z
+//  [2,3]   Bandgap raw ADC reading
+//  [4,5]   CPU frequency in kHz (Arduino only)
 uint8_t* get_model(void) {
     static uint8_t resp[MODEL_INFO_LEN];
     uint16_t bandgap;
@@ -35,7 +35,7 @@ uint8_t* get_model(void) {
     #if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
         #define BANDGAP_PORT (14)
     #else
-	#define BANDGAP_PORT (30)
+    #define BANDGAP_PORT (30)
     #endif
     // read and ignore bandgap to start it settling
     bandgap = adc_read(BANDGAP_PORT); 
