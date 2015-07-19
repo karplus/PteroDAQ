@@ -11,15 +11,15 @@ void LED_start(void){
     uint64_t time;
     uint64_t flash_time;
 
-    pinMode(LED_pin, OUTPUT);
+    pinMode(LED_pin, 1); // output
     tim_watch();
     
     // 1 second of accelerating flashes
     for (flash_time = TIM_WATCH_RATE/4; flash_time > 0; flash_time = flash_time>>1) {
-        digitalWrite(LED_pin, HIGH);
+        digitalWrite(LED_pin, 1);
         time = tim_time();
         while (tim_time() < time+flash_time);
-        digitalWrite(LED_pin, LOW);
+        digitalWrite(LED_pin, 0);
         time = tim_time();
         while (tim_time() < time+flash_time);
     }
@@ -30,15 +30,15 @@ void LED_handshake(void){
     uint64_t time;
     uint8_t i;
     
-    pinMode(LED_pin, OUTPUT);
+    pinMode(LED_pin, 1); // output
     tim_watch();
 
     // flash 4 times
     for (i=0; i<4; i++){
-        digitalWrite(LED_pin,1);
+        digitalWrite(LED_pin, 1);
         time = tim_time();
         while (tim_time() < time+TIM_WATCH_RATE/16);
-        digitalWrite(LED_pin,0);
+        digitalWrite(LED_pin, 0);
         time = tim_time();
         while (tim_time() < time+TIM_WATCH_RATE/16);
     }

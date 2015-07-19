@@ -13,7 +13,10 @@ except ImportError:
     import tkFileDialog as tkf
     import tkFont as tkfont
     import tkSimpleDialog as tks
-    import ttk
+    try:
+        import ttk
+    except ImportError:
+        import ttkcompat as ttk # Python 2.6   
 import core
 from getports import ports
 from comm import tostr
@@ -52,7 +55,7 @@ def changetime(varname, varind, acc):
             if s == 0:
                 return
             changerunning = True
-            hzvar.set("{:.4g}".format(1/s))
+            hzvar.set("{0:.4g}".format(1/s))
         except ValueError:
             pass
     else:
@@ -61,7 +64,7 @@ def changetime(varname, varind, acc):
             if h == 0:
                 return
             changerunning = True
-            secvar.set("{:.4g}".format(1/h))
+            secvar.set("{0:.4g}".format(1/h))
         except ValueError:
             pass
 
@@ -77,7 +80,7 @@ class ImageButton(ttk.Label):
             self.bind('<ButtonRelease-1>', command)
 
 class ChannelWidget(ttk.Frame):
-    chnums = {0}
+    chnums = set([0])
     byloc = []
     slwidth = 200
     slheight = 50
@@ -102,7 +105,7 @@ class ChannelWidget(ttk.Frame):
         
         # name of channel
         self.namevar = nv = tk.StringVar()
-        nv.set('ch{}'.format(self.num))
+        nv.set('ch{0}'.format(self.num))
         namefield = ttk.Entry(self, textvariable=nv, width=16, font=('TkTextFont', 0, 'bold'))
         namefield.focus()
         
@@ -190,7 +193,7 @@ class ChannelWidget(ttk.Frame):
         # update value at end of line
         last_raw_val = sparkline[-1]
         if  self.descriptor.interpretation.is_analog and  use_power_voltage.get():
-            self.last_value['text']= "{:.4f}".format(self.descriptor.volts(last_raw_val,daq.board.power_voltage))
+            self.last_value['text']= "{0:.4f}".format(self.descriptor.volts(last_raw_val,daq.board.power_voltage))
         else:
             self.last_value['text']= last_raw_val
         
@@ -218,7 +221,7 @@ class ChannelWidget(ttk.Frame):
     def show_options(self, e):
         self.menu.post(e.x_root, e.y_root)
     def req_downsample(self, e=None):
-        res = tks.askinteger('Downsampling', 'Downsample channel {} by'.format(self.namevar.get()), initialvalue=self.downsamp, minvalue=1)
+        res = tks.askinteger('Downsampling', 'Downsample channel {0} by'.format(self.namevar.get()), initialvalue=self.downsamp, minvalue=1)
         if res is not None:
             self.downsamp = res
     def move_up(self, e=None):
@@ -274,7 +277,7 @@ class PortSelect(object):
         #print('DEBUG: fc =', repr(fc), file=sys.stderr)
         #print('DEBUG: ps =', repr(ps), file=sys.stderr)
         if fc:
-            fcn = portlist.item(int(fc[0]))['text']
+            fcn = portlist.item(int(fc[0]), 'text')
         elif ps:
             fcn = tostr(ps[0][0])
         else:
@@ -345,7 +348,7 @@ def main(e=None):
         os_background_color = root['bg']
     
     master_frame = ttk.Frame(root)
-    root.title('Data Acquisition')
+    root.title('PteroDAQ')
     
     sineimg = tk.PhotoImage(file=os.path.join(maindir, 'daq/icons/sinewave.gif'))
     squareimg = tk.PhotoImage(file=os.path.join(maindir, 'daq/icons/squarewave.gif'))
@@ -384,7 +387,7 @@ def main(e=None):
         channel_canvas.yview_moveto(1)
     
     def power_voltage_str():
-        return 'Supply voltage: {:.4f}'.format(daq.board.power_voltage)
+        return 'Supply voltage: {0:.4f}'.format(daq.board.power_voltage)
     def startrec(e=None):
         """Action to take when "Record" butting is pressed
         """
@@ -417,7 +420,7 @@ def main(e=None):
         """Code to run when user attempts to close window
         """
         if daq.num_saved < len(daq.data()):
-            save_before_quit=tkm.askyesnocancel("{} unsaved readings".format(len(daq.data())),
+            save_before_quit=tkm.askyesnocancel("{0} unsaved readings".format(len(daq.data())),
                 "Save before quitting?")
 #            print("DEBUG: save_before_quit=",save_before_quit,file=sys.stderr)
             if save_before_quit is None:
@@ -605,7 +608,7 @@ def main(e=None):
                 + int(daq.data()[freeze_count-1][0]/ daq.conf[0].period  +1.1)
 #            print("DEBUG: implied_packets=",implied_packets, "freeze_count=", freeze_count, file=sys.stderr)
             if implied_packets>freeze_count:
-                errorlabel['text'] = "Warning: {} packets dropped".format(implied_packets - freeze_count)
+                errorlabel['text'] = "Warning: {0} packets dropped".format(implied_packets - freeze_count)
                 errorlabel.grid(row=0, column=0)
             else:
                 errorlabel.grid_forget()
@@ -619,7 +622,7 @@ def main(e=None):
         root.after(100, update_data)
     
     root.update_idletasks()
-#    root.resizable(False, False)
+    
     root.tk.createcommand('scrollcan', scrollcan)
     root.bind_all('<MouseWheel>', 'scrollcan %D')
     
@@ -629,23 +632,27 @@ def main(e=None):
     #handle quits caused by keyboard shortcut
     root.createcommand('exit',on_closing)
     
-    # On Macs, allow the dock icon to deiconify.
-    root.createcommand('::tk::mac::ReopenApplication',root.deiconify)
-    
-    # On Macs, set up menu bar to be minimal.
-    root.option_add('*tearOff', False)
-    windowingsystem = root.tk.call('tk', 'windowingsystem')
-    menubar = tk.Menu(root)
-    if windowingsystem == 'aqua':
-        appmenu = tk.Menu(menubar, name='apple')
-        menubar.add_cascade(menu=appmenu)
-    root['menu'] = menubar
-
     # Run update_data after 100 ms
     root.after(100, update_data)
 
 root = tk.Tk()
 daq = core.DataAcquisition()
+
+# On Macs, allow the dock icon to deiconify.
+root.createcommand('::tk::mac::ReopenApplication', root.deiconify)
+
+# On Macs, set up menu bar to be minimal.
+root.option_add('*tearOff', False)
+windowingsystem = root.tk.call('tk', 'windowingsystem')
+menubar = tk.Menu(root)
+if windowingsystem == 'aqua':
+    appmenu = tk.Menu(menubar, name='apple')
+    menubar.add_cascade(menu=appmenu)
+root['menu'] = menubar
+
+# On Linux and Windows, set the app's icon
+appicon = tk.PhotoImage(file=os.path.join(maindir, 'extras/appicons/pterodaq512.gif'))
+root.tk.call('wm','iconphoto',root._w,appicon)
 
 ps = PortSelect(root, doconn)
 

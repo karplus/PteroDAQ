@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleExecutable</key>
+	<string>startpterodaq.sh</string>
+	<key>CFBundleIconFile</key>
+	<string>PteroDAQ.icns</string>
+	<key>CFBundleIdentifier</key>
+	<string>us.abekarpl.pterodaq</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>PteroDAQ</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>v0.2b1</string>
+	<key>CFBundleVersion</key>
+	<string>v0.2b1</string>
+	<key>LSRequiresCarbon</key>
+	<true/>
+	<key>NSAppleScriptEnabled</key>
+	<true/>
+	<key>NSHumanReadableCopyright</key>
+	<string>(c) 2015 Abe Karplus and Kevin Karplus</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+</dict>
+</plist>

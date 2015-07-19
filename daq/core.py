@@ -212,16 +212,16 @@ class DataAcquisition(object):
         scale = self.board.power_voltage / 65536.
         with open(fn, 'w') as f:
             f.write('# PteroDAQ recording\n')
-            f.write('# {:%Y %b %d %H:%M:%S}\n'.format(datetime.now()))
+            f.write('# {0:%Y %b %d %H:%M:%S}\n'.format(datetime.now()))
             if isinstance(use_conf[0], TriggerTimed):
-                f.write('# Recording every {} sec ({} Hz)\n'.format(use_conf[0].period, 1./use_conf[0].period))
+                f.write('# Recording every {0} sec ({1} Hz)\n'.format(use_conf[0].period, 1./use_conf[0].period))
             elif isinstance(use_conf[0], TriggerPinchange):
-                f.write('# Recording when {} {}\n'.format(use_conf[0].pin, use_conf[0].sense))
-            f.write('# Analog reference is {}\n'.format(use_conf[1]))
+                f.write('# Recording when {0} {1}\n'.format(use_conf[0].pin, use_conf[0].sense))
+            f.write('# Analog reference is {0}\n'.format(use_conf[1]))
             if use_conf[2] != 1:
-                f.write('# Averaging {} readings together\n'.format(use_conf[2]))
+                f.write('# Averaging {0} readings together\n'.format(use_conf[2]))
             if convvolts:
-                f.write('# Scale: 0 to {:.4f} volts\n'.format(self.board.power_voltage))
+                f.write('# Scale: 0 to {0:.4f} volts\n'.format(self.board.power_voltage))
             else:
                 f.write('# Scale: 0 to 65535\n')
             f.write('# Recording channels:\n')
@@ -233,16 +233,16 @@ class DataAcquisition(object):
             for ch_name,ch_probe in zip(new_conf[-1],use_conf[-1]):
                 downsample = ch_probe.interpretation.downsample
                 if downsample>1:
-                    f.write('#   {} : {} downsample by {}\n'.format(ch_name.name, 
+                    f.write('#   {0} : {1} downsample by {2}\n'.format(ch_name.name, 
                         self.board.name_from_probe[ch_probe.probe],
                         downsample))
                 else:
-                    f.write('#   {} : {}\n'.format(ch_name.name, 
+                    f.write('#   {0} : {1}\n'.format(ch_name.name, 
                         self.board.name_from_probe[ch_probe.probe]))
             f.write('# Notes:\n')
             for ln in notes.split('\n'):
-                f.write('#   {}\n'.format(ln))
-            f.write('# {} samples\n'.format(len(self._data)))
+                f.write('#   {0}\n'.format(ln))
+            f.write('# {0} samples\n'.format(len(self._data)))
             old_time=0
             time_offset=None
             for d in self._data:
@@ -254,7 +254,7 @@ class DataAcquisition(object):
                     f.write('\n')   # blank line if back in time
                 old_time=time
             
-                f.write('{:.7f}'.format(time-time_offset)) # timestamp
+                f.write('{0:.7f}'.format(time-time_offset)) # timestamp
                 for n, x in enumerate(d[1:]):
                     ch = self.channels[n]
                     f.write('\t')
@@ -288,7 +288,7 @@ class DataAcquisition(object):
             return
         version = self.comm.command('V')
         if version != firmware_version:
-            self._conncall('Incorrect version: {} present, {} needed.'.format(tostr(version), tostr(firmware_version)))
+            self._conncall('Incorrect version: {0} present, {1} needed.'.format(tostr(version), tostr(firmware_version)))
             return
         model = self.comm.command('M')
         self.board = getboardinfo(model)
@@ -304,7 +304,7 @@ class DataAcquisition(object):
             self.trigger_error="triggering too fast, next trigger before finished"
         elif err_bytes[0]==2:
             # Illegal trigger type requested of board
-            raise RuntimeError("Error: illegal trigger type requested: {}".format(err_bytes[1]))
+            raise RuntimeError("Error: illegal trigger type requested: {0}".format(err_bytes[1]))
     
     def _parsedata(self, rd):
         # print('DEBUG: dat', repr(rd), file=sys.stderr)
