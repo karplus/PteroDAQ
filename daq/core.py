@@ -4,6 +4,13 @@ import sys
 import struct
 from datetime import datetime
 from collections import namedtuple
+try:
+    from future_builtins import zip
+except ImportError:     # either before Python2.6 or one of the Python 3.*
+    try:
+        from itertools import izip as zip
+    except ImportError: # not an early Python, so must be Python 3.*
+        pass
 
 from comm import CommPort, tobytes, tostr
 from boards import getboardinfo
