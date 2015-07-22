@@ -355,13 +355,20 @@ def doconn(port):
 
 last_file_saved=None    # what filename was last used for a save operation
 
+def update_inner_channel_frame():
+    """Update scroll region and sparklines after changing size of inner_channel_frame 
+    """
+    inner_channel_frame.update_idletasks()
+    channel_canvas['scrollregion'] = (0,0,inner_channel_frame.winfo_width(), inner_channel_frame.winfo_height())
+    update_data(force_refresh=True)
+
 def change_height(event):
     """Change the height of a ChannelWidget by an event
-    (bound, for example, to <B1-Motion>
+    (bound, for example, to <B1-Motion>)
     """
     event.widget.sparkline_canvas['height'] = event.y
     event.widget.update_idletasks()
-    channel_canvas['scrollregion'] = (0,0,inner_channel_frame.winfo_width(), inner_channel_frame.winfo_height())
+    update_inner_channel_frame()
 
 
 def main(e=None):
@@ -592,11 +599,11 @@ def main(e=None):
 
     # Weird way to allow inner_channel_frame to resize to fill canvas
     def inner_channel_change_width(event):
-        """Function to bind to '<Configure>' of a canvas to make it adjust it's size
+        """Function to bind to '<Configure>' of a canvas to make it adjust its size
         when the window is resized.
         """
-        canvas_width = event.width
-        channel_canvas.itemconfig(inner_channel_window, width = canvas_width)
+        channel_canvas.itemconfig(inner_channel_window, width = event.width)
+        update_inner_channel_frame()
 
     channel_canvas.bind('<Configure>', inner_channel_change_width)
     
@@ -666,7 +673,6 @@ def main(e=None):
             root.after(100, update_data)
     
     root.update_idletasks()
-#    root.resizable(False, False)
     root.tk.createcommand('scrollcan', scrollcan)
     root.bind_all('<MouseWheel>', 'scrollcan %D')
     
