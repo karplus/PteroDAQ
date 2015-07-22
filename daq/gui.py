@@ -1,5 +1,10 @@
 from __future__ import division, print_function
 
+import os.path
+import sys
+from itertools import chain
+from math import sqrt
+
 try:
     import tkinter as tk
     from tkinter import messagebox as tkm
@@ -17,9 +22,7 @@ except ImportError:
 import core
 from getports import ports
 from comm import tostr
-import os.path
-import sys
-from itertools import chain
+
 
 # TO DO:
 #
@@ -52,7 +55,7 @@ def changetime(varname, varind, acc):
             if s == 0:
                 return
             changerunning = True
-            hzvar.set("{:.4g}".format(1/s))
+            hzvar.set("{0:.4g}".format(1/s))
         except ValueError:
             pass
     else:
@@ -61,7 +64,7 @@ def changetime(varname, varind, acc):
             if h == 0:
                 return
             changerunning = True
-            secvar.set("{:.4g}".format(1/h))
+            secvar.set("{0:.4g}".format(1/h))
         except ValueError:
             pass
 
@@ -77,10 +80,8 @@ class ImageButton(ttk.Label):
             self.bind('<ButtonRelease-1>', command)
 
 class ChannelWidget(ttk.Frame):
-    chnums = {0}
+    chnums = set([0])
     byloc = []
-    slwidth = 200
-    slheight = 50
     def __init__(self, master):
         def changeicon(val, *args):
             if daq.board.is_analog(val):
@@ -96,6 +97,16 @@ class ChannelWidget(ttk.Frame):
         self.menu.add_command(label='Move Up', command=self.move_up)
         self.menu.add_command(label='Move Down', command=self.move_down)
         self.menu.add_command(label='Remove', command=self.remove)
+        
+        self.menu.add_separator()
+        self.display_type=tk.StringVar()
+        self.display_type.set('last value')
+        self.display_type.trace('w',lambda *args:update_data(force_refresh=True))
+        self.menu.add_radiobutton(label='last value', 
+                variable=self.display_type,value='last value')
+        self.menu.add_radiobutton(label='average', 
+                variable=self.display_type,value='average')
+        
         self.num = max(ChannelWidget.chnums) + 1
         ChannelWidget.chnums.add(self.num)
         ChannelWidget.byloc.append(self)
@@ -127,24 +138,34 @@ class ChannelWidget(ttk.Frame):
         optbutton = ImageButton(self, file=os.path.join(maindir, 'daq/icons/options.gif'), command=self.show_options)
         
         # canvas for sparkline
-        self.can = tk.Canvas(self, height=self.slheight, width=self.slwidth, highlightthickness=0, 
+        self.sparkline_canvas = tk.Canvas(self, height=50, width=200, highlightthickness=0, 
                         bg='white')
-        self.canline = self.can.create_line(0, 0, 0, 0)
+        self.sparkline = self.sparkline_canvas.create_line(0, 0, 0, 0)
 
-        # last value read
-        font = tkfont.Font(family="TkTextFont")
-        width_in_chars=int(0.999 + font.measure("-0.0000")/font.measure("n"))
-        self.last_value = ttk.Label(self,width=width_in_chars, anchor='e')
+#        self.display_font = tkfont.Font(family="Courier",size=11)
+        self.display_font= tkfont.Font(family="TkTextFont")
+        self.average_label = ttk.Label(self,anchor='w',text="DC:\nRMS:",font=self.display_font)
+
+        width_in_chars=int(0.999 + self.display_font.measure("65536.1")/self.display_font.measure('n'))
+        self.display_value = ttk.Label(self,width=width_in_chars, anchor='e', font=self.display_font,justify='right')
+        
+        # 0th, 1st, and 2nd moment for computing mean and rms
+        self.x0=0
+        self.x1=0
+        self.x2=0
         
         ## grid all the items
         namefield.grid(row=0, column=0, sticky='ew')
         self.columnconfigure(0, weight=1)       # let namefield stretch
+        self.columnconfigure(3, minsize=10, weight=3)	# let sparkline stretch mode
         pinchoice.grid(row=0, column=1)
         optbutton.grid(row=0, column=2)
-        self.can.grid(row=0, column=3)
-        self.last_value.grid(row=0,column=4,sticky='ns')
+        self.sparkline_canvas.grid(row=0, column=3, sticky='ew')
+        self.average_label.grid(row=0,column=4,sticky='ns')
+        self.average_label.grid_forget()
+        self.display_value.grid(row=0,column=5,sticky='ns')
         
-        ttk.Separator(self, orient='horizontal').grid(row=1, column=0, columnspan=5,
+        ttk.Separator(self, orient='horizontal').grid(row=1, column=0, columnspan=6,
                          sticky='ew', padx=2, pady=2)
     def remove(self, e=None):
         ChannelWidget.chnums.discard(self.num)
@@ -171,7 +192,7 @@ class ChannelWidget(ttk.Frame):
     def make_sparkline(self, chan_num, freeze_count):
         """Make a sparkline for data up to time point freeze_count
         from daq.data()[chan_num]
-        (essentially daq.data()[freeze_count-slwidth:freeze_count][chan_num])
+        (essentially daq.data()[freeze_count-width:freeze_count][chan_num])
 
         For analog channels, those are 16-bit unsigned values.
         For digital channels, those are 0 or 1.
@@ -179,42 +200,62 @@ class ChannelWidget(ttk.Frame):
         """
 #        print("DEBUG: sparkline(",chan_num,",",freeze_count,")", file=sys.stderr)
         if freeze_count==0:
-            last_raw_value=''
             return
         
+        x,y,width,height=self.grid_bbox(row=0,column=3)
         # make a copy of the data into sparkline, to transform in place
-        start = max(0, freeze_count-self.slwidth)
+        start = max(0, freeze_count-width)
         sparkline = [x[chan_num] for x in daq.data()[start:freeze_count]]
 #        print("DEBUG: len(sparkline)=",len(sparkline), file=sys.stderr)
         
         # update value at end of line
-        last_raw_val = sparkline[-1]
-        if  self.descriptor.interpretation.is_analog and  use_power_voltage.get():
-            self.last_value['text']= "{:.4f}".format(self.descriptor.volts(last_raw_val,daq.board.power_voltage))
-        else:
-            self.last_value['text']= last_raw_val
+        if self.display_type.get()=='last value':
+            self.average_label.grid_forget()
+            last_value = sparkline[-1]
+            if  self.descriptor.interpretation.is_analog and  use_power_voltage.get():
+                last_value = self.descriptor.volts(last_value,daq.board.power_voltage)
+                self.display_value['text']= "{0:.4f}".format(last_value)
+            else:
+                self.display_value['text']= last_value
+        elif self.display_type.get()=='average':
+            self.average_label.grid(row=0,column=4,sticky='ns')
+            values = [x[chan_num] for x in daq.data()[self.x0:freeze_count]]
+            self.x0 = freeze_count
+            self.x1 += sum(values)
+            self.x2 += sum(x*x for x in values)
+            mean=self.x1/self.x0
+            rms=sqrt(self.x2/self.x0 - mean**2)
+            if  self.descriptor.interpretation.is_analog and  use_power_voltage.get():
+                mean = self.descriptor.volts(mean,daq.board.power_voltage)
+                rms = self.descriptor.volts(rms,daq.board.power_voltage)
+                self.display_value['text']= "{0:7.4f}\n{1:7.4f}".format(mean,rms)
+            else:
+                self.display_value['text']= "{0:7.1f}\n{1:7.1f}".format(mean,rms)
         
         if len(sparkline)<2:
             return      # too short make a line
             
-        # scale sparkline to 0..slheight-1 range
+        # scale sparkline to 0..height-1 range
         # (more positive data is lower scaled value)
         if self.descriptor.interpretation.is_analog:
             if self.descriptor.interpretation.is_signed:
                 for n,d in enumerate(sparkline):
-                    sparkline[n] = (self.slheight-1)*(1.- (d+32768)/65536.)
+                    sparkline[n] = (height-1)*(1.- (d+32768)/65536.)
             else:
                 for n,d in enumerate(sparkline):
-                    sparkline[n] = (self.slheight-1)*(1.- d/65536.)
+                    sparkline[n] = (height-1)*(1.- d/65536.)
         else:
             for n,d in enumerate(sparkline):
-                sparkline[n] = (self.slheight-1)*(1- d)
+                sparkline[n] = (height-1)*(1- d)
         
-        self.can.coords(self.canline, *(chain.from_iterable(enumerate(sparkline))))
+        self.sparkline_canvas.coords(self.sparkline, *(chain.from_iterable(enumerate(sparkline))))
     
     def clear(self):
-        self.can.coords(self.canline, 0, 0, 0, 0)
-        self.last_value['text']=''
+        self.sparkline_canvas.coords(self.sparkline, 0, 0, 0, 0)
+        self.x0=0
+        self.x1=0
+        self.x2=0
+        self.display_value['text']=''
     def show_options(self, e):
         self.menu.post(e.x_root, e.y_root)
     def req_downsample(self, e=None):
@@ -334,6 +375,7 @@ def main(e=None):
     global channel_canvas
     global clearreads
     global os_background_color
+    global update_data
         
     try:
         # on Mac OS X, the background color for windows has a strange name
@@ -384,7 +426,7 @@ def main(e=None):
         channel_canvas.yview_moveto(1)
     
     def power_voltage_str():
-        return 'Supply voltage: {:.4f}'.format(daq.board.power_voltage)
+        return 'Supply voltage: {0:.4f}'.format(daq.board.power_voltage)
     def startrec(e=None):
         """Action to take when "Record" butting is pressed
         """
@@ -587,9 +629,12 @@ def main(e=None):
     root.rowconfigure(0,weight=1)
 
 
-    def update_data():
+    def update_data(force_refresh=False):
         """Update the sparkline and value display for all channels.
         Should be called periodically (about 10/second) for smooth display.
+        
+        Only updates if the length of daq.data() has changed
+        (unless force_refresh is set).
         """
         # freeze the count so that all sparklines stay synchronized
         freeze_count = len(daq.data())
@@ -612,11 +657,12 @@ def main(e=None):
         else:
             errorlabel.grid_forget()
         
-        if freeze_count>int(countlabel['text']):
+        if force_refresh or freeze_count>int(countlabel['text']):
             for n, ch in enumerate(ChannelWidget.byloc, 1):
                 ch.make_sparkline(n,freeze_count)
         countlabel['text'] = freeze_count
-        root.after(100, update_data)
+        if not force_refresh:
+            root.after(100, update_data)
     
     root.update_idletasks()
 #    root.resizable(False, False)
