@@ -279,18 +279,22 @@ class PortSelect(object):
         if fc:
             fcn = portlist.item(int(fc[0]), 'text')
         elif ps:
-            fcn = tostr(ps[0][0])
+            fcn = ps[0][0]
         else:
             fcn = None
         if isinstance(fcn, list): # python 3.4.3
-            fcn = tostr(bytes(fcn))
+            fcn = bytes(fcn)
+        if isinstance(fcn, bytes):
+            fcn = tostr(fcn)
         #print('DEBUG: fcn =', repr(fcn), file=sys.stderr)
         for x in portlist.get_children():
             portlist.delete(x)
         for n, x in enumerate(ps):
             nm = tostr(x[0])
             portlist.insert('', 'end', str(n), text=x[0])
+            #print('DEBUG: nm =', repr(nm), file=sys.stderr)
             if nm == fcn:
+                #print('DEBUG: n =', repr(n), file=sys.stderr)
                 portlist.selection_set(str(n))
         self.aft = portlist.after(500, self.updateports)
     def checkstart(self):

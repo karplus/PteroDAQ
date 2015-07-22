@@ -50,7 +50,7 @@ void ser_flushout(void) {
 //      to use the double-buffering built into the KL25Z USB interface, though, which could make
 //      it messier to use non-blocking output.
 
-static USBSerial _comm; //TODO change VID/PID on receiving from OpenMoko (0x1d50, 0x60cb);
+static USBSerial _comm(0x1d50, 0x60cb);
 
 extern "C" {
 

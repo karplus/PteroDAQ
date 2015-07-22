@@ -5,7 +5,7 @@ def sig(func, res, args):
     func.restype = res
     func.argtypes = args
 
-k32 = c.WinDLL('kernel32')
+k32 = c.windll.kernel32
 
 GENERIC_READ  = 0x80000000
 GENERIC_WRITE = 0x40000000
@@ -21,11 +21,12 @@ PURGE_RXABORT = 2
 PURGE_TXCLEAR = 4
 PURGE_RXCLEAR = 8
 
-if c.sizeof(c.c_ulong) == c.sizeof(c.c_void_p):
+if c.sizeof(c.c_void_p) == c.sizeof(c.c_ulong):
     # 32-bit
-    ULONG_PTR = c.c_ulong
+    ULONG_PTR = c.c_uint32
 else:
-    ULONG_PTR = c.c_int64
+    # 64-bit
+    ULONG_PTR = c.c_uint64
 
 class _overlapped_s(c.Structure):
     _fields_ = [
@@ -96,6 +97,8 @@ class COMSTAT(c.Structure):
         ('cbInQue', wt.DWORD),
         ('cbOutQue', wt.DWORD)]
 
+INVALID_HANDLE_VALUE = c.c_void_p(-1).value
+
 # function signatures
 sig(k32.CreateFileW, wt.HANDLE,
     [wt.LPCWSTR, wt.DWORD, wt.DWORD, c.c_void_p, wt.DWORD, wt.DWORD, wt.HANDLE])
@@ -137,17 +140,28 @@ class Serial(object):
             OPEN_EXISTING,
             FILE_ATTRIBUTE_NORMAL|FILE_FLAG_OVERLAPPED,
             0)
+        if self.fd.value == INVALID_HANDLE_VALUE:
+            raise c.WinError()
         self._ovr = OVERLAPPED()
         self._ovw = OVERLAPPED()
         self._ovr.hEvent = k32.CreateEventW(None, 1, 0, None)
+        if not self._ovr.hEvent:
+            raise c.WinError()
         self._ovw.hEvent = k32.CreateEventW(None, 0, 0, None)
-        k32.SetupComm(self.fd, 4096, 4096)
+        if not self._ovr.hEvent:
+            raise c.WinError()
+        if not k32.SetupComm(self.fd, 4096, 4096):
+            raise c.WinError()
         self._initial_timeouts = COMMTIMEOUTS()
-        k32.GetCommTimeouts(self.fd, c.byref(self._initial_timeouts))
-        k32.SetCommTimeouts(self.fd, c.byref(COMMTIMEOUTS(0,0,1000,0,0)))
-        k32.SetCommMask(self.fd, EV_ERR)
+        if not k32.GetCommTimeouts(self.fd, c.byref(self._initial_timeouts)):
+            raise c.WinError()
+        if not k32.SetCommTimeouts(self.fd, c.byref(COMMTIMEOUTS(0,0,1000,0,0))):
+            raise c.WinError()
+        if not k32.SetCommMask(self.fd, EV_ERR):
+            raise c.WinError()
         s = DCB()
-        k32.GetCommState(self.fd, c.byref(s))
+        if not k32.GetCommState(self.fd, c.byref(s)):
+            raise c.WinError()
         s.BaudRate = 1000000
         s.ByteSize = 8
         s.Parity = 0
@@ -165,33 +179,45 @@ class Serial(object):
         s.fAbortOnError = 0
         s.XonChar = b'\x11'
         s.XoffChar = b'\x13'
-        k32.SetCommState(self.fd, c.byref(s))
-        k32.PurgeComm(self.fd, PURGE_TXCLEAR|PURGE_TXABORT|PURGE_RXCLEAR|PURGE_RXABORT)
+        if not k32.SetCommState(self.fd, c.byref(s)):
+            raise c.WinError()
+        if not k32.PurgeComm(self.fd, PURGE_TXCLEAR|PURGE_TXABORT|PURGE_RXCLEAR|PURGE_RXABORT):
+            raise c.WinError()
     
     def read(self, n):
-        k32.ResetEvent(self._ovr.hEvent)
+        if not k32.ResetEvent(self._ovr.hEvent):
+            raise c.WinError()
         flags = wt.DWORD()
         rc = wt.DWORD()
         cs = COMSTAT()
-        k32.ClearCommError(self.fd, c.byref(flags), c.byref(cs))
+        if not k32.ClearCommError(self.fd, c.byref(flags), c.byref(cs)):
+            raise c.WinError()
         buf = c.create_string_buffer(n)
-        k32.ReadFile(self.fd, buf, n, c.byref(rc), c.byref(self._ovr))
-        k32.GetOverlappedResult(self.fd, c.byref(self._ovr), c.byref(rc), True)
+        if not k32.ReadFile(self.fd, buf, n, c.byref(rc), c.byref(self._ovr)):
+            raise c.WinError()
+        if not k32.GetOverlappedResult(self.fd, c.byref(self._ovr), c.byref(rc), True):
+            raise c.WinError()
         return buf.raw[:rc.value]
     
     def write(self, d):
         n = wt.DWORD()
-        k32.WriteFile(self.fd, d, len(d), c.byref(n), self._ovw)
-        k32.GetOverlappedResult(self.fd, self._ovw, c.byref(n), True)
+        if not k32.WriteFile(self.fd, d, len(d), c.byref(n), self._ovw):
+            raise c.WinError()
+        if not k32.GetOverlappedResult(self.fd, self._ovw, c.byref(n), True):
+            raise c.WinError()
         return n.value 
         # TO DO: retry until all sent?  Not currently failing,
         # so no retry attempted
     
     def close(self):
-        k32.SetCommTimeouts(self.fd, c.byref(self._initial_timeouts))
-        k32.CloseHandle(self.fd)
-        k32.CloseHandle(self._ovr.hEvent)
-        k32.CloseHandle(self._ovw.hEvent)
+        if not k32.SetCommTimeouts(self.fd, c.byref(self._initial_timeouts)):
+            raise c.WinError()
+        if not k32.CloseHandle(self.fd):
+            raise c.WinError()
+        if not k32.CloseHandle(self._ovr.hEvent):
+            raise c.WinError()
+        if not k32.CloseHandle(self._ovw.hEvent):
+            raise c.WinError()
         self.fd = None
     
     def __del__(self):
