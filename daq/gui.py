@@ -287,9 +287,9 @@ class PortSelect(object):
         self.port_frame = port_frame = ttk.Frame(win)
         self.pl = ttk.Treeview(port_frame, show='tree', selectmode='browse', height=8)
         self.updateports()
-        btn = ttk.Button(port_frame, text='Go', command=self.useport)
+        self.go_btn = ttk.Button(port_frame, text='Go', command=self.useport)
         self.pl.pack(fill='both', expand='yes')
-        btn.pack()
+        self.go_btn.pack()
         port_frame.pack(fill='both', expand='yes')
     def useport(self):
         treeview_selections=self.pl.selection()
@@ -297,10 +297,14 @@ class PortSelect(object):
             # nothing selected (probably no board plugged in)
             tkm.showerror("No board", "No PteroDAQ board selected---plug one in and try again")
             return
-        port = self.ps[int(treeview_selections[0])][1]
-        self.port_frame.destroy()
+        portname, port = self.ps[int(treeview_selections[0])]
         self.pl.after_cancel(self.aft)
+        self.pl.destroy()
+        self.go_btn.destroy()
         self.cb(tostr(port))
+        self.conn_label = ttk.Label(self.port_frame, padding=10,
+            text='Connecting to\n{0}\n{1}'.format(tostr(portname), tostr(port)))
+        self.conn_label.pack()
         self.aft = root.after(100, self.checkstart)
     def updateports(self):
         ps = self.ps = ports()
@@ -338,7 +342,8 @@ class PortSelect(object):
         if startmain.go:
             # a daq.connect has completed
             if startmain.fail is None:
-                # completed successfulyy
+                # completed successfully
+                self.port_frame.destroy()
                 main()
             else:
                 # failed

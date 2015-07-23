@@ -20,7 +20,7 @@ from . import posixgetports
 
 p = sys.platform
 if p == 'win32':
-    from .wingetports import portiter
+    from .wingetports2 import portiter
     from .winser import Serial
 else:
     if p == 'darwin': # mac

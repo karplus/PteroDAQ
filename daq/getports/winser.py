@@ -20,6 +20,7 @@ PURGE_TXABORT = 1
 PURGE_RXABORT = 2
 PURGE_TXCLEAR = 4
 PURGE_RXCLEAR = 8
+ERROR_IO_PENDING = 997
 
 if c.sizeof(c.c_void_p) == c.sizeof(c.c_ulong):
     # 32-bit
@@ -133,6 +134,7 @@ sig(k32.WriteFile, wt.BOOL,
 
 class Serial(object):
     def __init__(self, fn, **args):
+        #print('DEBUG: fn =', repr(fn))
         self.fd = k32.CreateFileW(fn,
             GENERIC_READ|GENERIC_WRITE,
             0, # exclusive access
@@ -140,7 +142,7 @@ class Serial(object):
             OPEN_EXISTING,
             FILE_ATTRIBUTE_NORMAL|FILE_FLAG_OVERLAPPED,
             0)
-        if self.fd.value == INVALID_HANDLE_VALUE:
+        if self.fd == INVALID_HANDLE_VALUE:
             raise c.WinError()
         self._ovr = OVERLAPPED()
         self._ovw = OVERLAPPED()
@@ -194,7 +196,8 @@ class Serial(object):
             raise c.WinError()
         buf = c.create_string_buffer(n)
         if not k32.ReadFile(self.fd, buf, n, c.byref(rc), c.byref(self._ovr)):
-            raise c.WinError()
+            if c.GetLastError() != ERROR_IO_PENDING:
+                raise c.WinError()
         if not k32.GetOverlappedResult(self.fd, c.byref(self._ovr), c.byref(rc), True):
             raise c.WinError()
         return buf.raw[:rc.value]
@@ -202,7 +205,8 @@ class Serial(object):
     def write(self, d):
         n = wt.DWORD()
         if not k32.WriteFile(self.fd, d, len(d), c.byref(n), self._ovw):
-            raise c.WinError()
+            if c.GetLastError() != ERROR_IO_PENDING:
+                raise c.WinError()
         if not k32.GetOverlappedResult(self.fd, self._ovw, c.byref(n), True):
             raise c.WinError()
         return n.value 
