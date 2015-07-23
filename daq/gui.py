@@ -173,10 +173,14 @@ class ChannelWidget(ttk.Frame):
                          sticky='ew', padx=2, pady=5)
 
     def remove(self, e=None):
+        if not ask_clear_reads():
+            # BUG: errorlabel is cleared too soon for this report to work.
+            # errorlabel['text']="Can't remove channel until data cleared"
+            # errorlabel.grid(row=0,column=0)
+            return
         ChannelWidget.chnums.discard(self.num)
         self.destroy()
-        inner_channel_frame.update_idletasks()
-        channel_canvas['scrollregion'] = (0,0,inner_channel_frame.winfo_width(), inner_channel_frame.winfo_height())
+        update_inner_channel_frame()
     
     def get_descriptor(self):
         """ return the descriptor used by the core for intepreting this channel
@@ -391,9 +395,9 @@ def main(e=None):
     global use_power_voltage
     global inner_channel_frame
     global channel_canvas
-    global clearreads
     global os_background_color
     global update_data
+    global ask_clear_reads
         
     try:
         # on Mac OS X, the background color for windows has a strange name
@@ -435,12 +439,16 @@ def main(e=None):
         return (trigger, aref, avg, channel_info)
     
     def newchannel(e=None):
+        if not ask_clear_reads():
+            # BUG: errorlabel is cleared too soon for this report to work.
+            # errorlabel['text']="Can't add new channel until data cleared"
+            # errorlabel.grid(row=0,column=0)
+            return
         ch = ChannelWidget(inner_channel_frame)
         ch.pack(expand=True, fill='x')
         ch.bind('<B1-Motion>', change_height)
         ch.update_idletasks()
-        channel_canvas['scrollregion'] = (0,0,inner_channel_frame.winfo_width(), inner_channel_frame.winfo_height())
-#        channel_canvas['width'] = inner_channel_frame.winfo_width()
+        update_inner_channel_frame()
         channel_canvas.update_idletasks()
         channel_canvas.yview_moveto(1)
     
@@ -467,13 +475,20 @@ def main(e=None):
     def oneread(e=None):
         daq.config(makeconf())
         daq.oneread()
-    def clearreads(e=None):
+    def clear_reads(e=None):
+        """clear all recorded data and sparklines"""
+        pauserec()
+        daq.clear()
+        for ch in inner_channel_frame.winfo_children():
+            ch.clear()
+        countlabel['text'] = '0'
+    def ask_clear_reads(e=None):
+        """ask user whether to clear all reads, returns True if reads cleared"""
+        if not daq.data(): return True
         if tkm.askyesno(message='Clear all current readings?', icon='question'):
-            daq.clear()
-            for ch in inner_channel_frame.winfo_children():
-                ch.clear()
-            countlabel['text'] = '0'
-    
+            clear_reads(e)
+            return True
+        return False
     def on_closing():
         """Code to run when user attempts to close window
         """
@@ -516,7 +531,7 @@ def main(e=None):
     pausebutton = ImageButton(controls, file=os.path.join(maindir, 'daq/icons/pause.gif'), command=pauserec)
     addchbutton = ImageButton(controls, file=os.path.join(maindir, 'daq/icons/plus.gif'), command=newchannel)
     singlebutton = ImageButton(controls, file=os.path.join(maindir, 'daq/icons/one.gif'), command=oneread)
-    clearbutton = ImageButton(controls, file=os.path.join(maindir, 'daq/icons/trash.gif'), command=clearreads)
+    clearbutton = ImageButton(controls, file=os.path.join(maindir, 'daq/icons/trash.gif'), command=ask_clear_reads)
     savebutton = ttk.Button(controls, command=savefile, text='Save')
     reclabel = ttk.Label(controls, text='Record')
     pauselabel = ttk.Label(controls, text='Pause')
