@@ -170,7 +170,6 @@ class DataAcquisition(object):
         confsend = bytearray()
         trigger, aref, avg, channels = conf
         #print('conf', conf)
-        self.conf = conf
         if  hasattr(self,'channels') and len(self.channels) != len(channels):
             self.clear()        # new config means old data is unusable
         self.channels = channels
@@ -181,7 +180,7 @@ class DataAcquisition(object):
             bytes_per_sec =  (1./trigger.period)*data_packet_length
             buffer_per_sec = bytes_per_sec/63
             force_flush = 0x10 if buffer_per_sec < 20 else 0
-            clkdiv, clkval = self.board.timer_calc(trigger.period)[1]
+            trigger.period, (clkdiv, clkval) = self.board.timer_calc(trigger.period)
             confsend.extend(struct.pack('<BBL', force_flush | 1, clkdiv, clkval))
         elif isinstance(trigger, TriggerPinchange):
             sense = next(x[1] for x in self.board.intsense if x[0] == trigger.sense)
@@ -195,8 +194,10 @@ class DataAcquisition(object):
             probe = ch.probe
             confsend.append(probe& 0xff)
             confsend.append(probe >> 8)
+        self.conf = conf
 #        print('DEBUG: confsend', confsend, file=sys.stderr)
         self.comm.command('C', bytes(confsend))
+    
     def data(self):
         return self._data
     def clear(self):

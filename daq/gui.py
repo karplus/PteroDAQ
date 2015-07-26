@@ -58,7 +58,7 @@ def changetime(varname, varind, acc):
             if s == 0:
                 return
             changerunning = True
-            hzvar.set("{0:.4g}".format(1/s))
+            hzvar.set("{0:.6g}".format(1/s))
         except ValueError:
             pass
     else:
@@ -67,7 +67,7 @@ def changetime(varname, varind, acc):
             if h == 0:
                 return
             changerunning = True
-            secvar.set("{0:.4g}".format(1/h))
+            secvar.set("{0:.6e}".format(1/h))
         except ValueError:
             pass
 
@@ -465,6 +465,7 @@ def main(e=None):
         statelabel['text'] = 'Recording'
         errorlabel.grid_forget()
         daq.config(makeconf())
+        secvar.set("{0:.6e}".format(daq.conf[0].period))
         daq.go()
     def pauserec(e=None):
         """Action to take then "Pause" button is pressed
@@ -474,6 +475,7 @@ def main(e=None):
         powerlabel['text'] = power_voltage_str()
     def oneread(e=None):
         daq.config(makeconf())
+        secvar.set("{0:.6e}".format(daq.conf[0].period))
         daq.oneread()
     def clear_reads(e=None):
         """clear all recorded data and sparklines"""
@@ -573,8 +575,8 @@ def main(e=None):
     pintrigger = ttk.Radiobutton(triggers, text='Pin Change', variable=triggertype, value=1)
     seclabel = ttk.Label(triggers, text='sec')
     hzlabel = ttk.Label(triggers, text='Hz')
-    secfield = ttk.Entry(triggers, textvariable=secvar, width=8)
-    hzfield = ttk.Entry(triggers, textvariable=hzvar, width=8)
+    secfield = ttk.Entry(triggers, textvariable=secvar, width=11)
+    hzfield = ttk.Entry(triggers, textvariable=hzvar, width=10)
     pinfield = ttk.Combobox(triggers, textvariable=pinvar, values=[x[0] for x in daq.board.eint])
     edgefield = ttk.Combobox(triggers, textvariable=edgevar, values=[x[0] for x in daq.board.intsense])
     pinfield['width'] = 8
