@@ -44,6 +44,32 @@ iswindows = sys.platform in ('win32', 'cygwin')
 
 changerunning = False
 
+
+def engineering_format(f,width=None,decimals=5):
+    """Convert floating-point number to string using 'engineering' format,
+    which is like the standard scientific format %<width>.<decimals>e,
+    except that exponents are limited to multiples of three.
+    """
+    scientific = '{0:e}'.format(f)
+    e_at = scientific.find('e')
+    if e_at<0: 
+        exponent=0
+    else:
+        exponent = int(scientific[e_at+1:])
+    shift_right = exponent%3
+    new_exponent = exponent-shift_right
+    adjusted_f = f/10**new_exponent
+    after_decimals = str(decimals-shift_right)
+    if new_exponent==0:
+        format_string = '{0:.' + after_decimals + 'f}'
+        combined= format_string.format(adjusted_f)
+    else:
+        format_string = '{0:.' + after_decimals + 'f}e{1:+03d}'
+        combined= format_string.format(adjusted_f,new_exponent)
+    if width and len(combined)<width: 
+        combined = ' '*(width-len(combined)) + combined
+    return combined
+
 def changetime(varname, varind, acc):
     """Update the seconds or hertz field
     when the other one is changed.
@@ -58,7 +84,7 @@ def changetime(varname, varind, acc):
             if s == 0:
                 return
             changerunning = True
-            hzvar.set("{0:.6g}".format(1/s))
+            hzvar.set(engineering_format(1/s,decimals=5))
         except ValueError:
             pass
     else:
@@ -67,7 +93,7 @@ def changetime(varname, varind, acc):
             if h == 0:
                 return
             changerunning = True
-            secvar.set("{0:.6e}".format(1/h))
+            secvar.set(engineering_format(1/h,decimals=6))
         except ValueError:
             pass
 
@@ -465,7 +491,7 @@ def main(e=None):
         statelabel['text'] = 'Recording'
         errorlabel.grid_forget()
         daq.config(makeconf())
-        secvar.set("{0:.6e}".format(daq.conf[0].period))
+        secvar.set(engineering_format(daq.conf[0].period,decimals=6))
         daq.go()
     def pauserec(e=None):
         """Action to take then "Pause" button is pressed
@@ -475,7 +501,7 @@ def main(e=None):
         powerlabel['text'] = power_voltage_str()
     def oneread(e=None):
         daq.config(makeconf())
-        secvar.set("{0:.6e}".format(daq.conf[0].period))
+        secvar.set(engineering_format(daq.conf[0].period,decimals=6))
         daq.oneread()
     def clear_reads(e=None):
         """clear all recorded data and sparklines"""
@@ -576,7 +602,7 @@ def main(e=None):
     seclabel = ttk.Label(triggers, text='sec')
     hzlabel = ttk.Label(triggers, text='Hz')
     secfield = ttk.Entry(triggers, textvariable=secvar, width=11)
-    hzfield = ttk.Entry(triggers, textvariable=hzvar, width=10)
+    hzfield = ttk.Entry(triggers, textvariable=hzvar, width=11)
     pinfield = ttk.Combobox(triggers, textvariable=pinvar, values=[x[0] for x in daq.board.eint])
     edgefield = ttk.Combobox(triggers, textvariable=edgevar, values=[x[0] for x in daq.board.intsense])
     pinfield['width'] = 8
