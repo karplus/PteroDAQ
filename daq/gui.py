@@ -491,7 +491,8 @@ def main(e=None):
         statelabel['text'] = 'Recording'
         errorlabel.grid_forget()
         daq.config(makeconf())
-        secvar.set(engineering_format(daq.conf[0].period,decimals=6))
+        if daq.is_timed_trigger():
+            secvar.set(engineering_format(daq.conf[0].period,decimals=6))
         daq.go()
     def pauserec(e=None):
         """Action to take then "Pause" button is pressed
@@ -501,7 +502,8 @@ def main(e=None):
         powerlabel['text'] = power_voltage_str()
     def oneread(e=None):
         daq.config(makeconf())
-        secvar.set(engineering_format(daq.conf[0].period,decimals=6))
+        if daq.is_timed_trigger():
+            secvar.set(engineering_format(daq.conf[0].period,decimals=6))
         daq.oneread()
     def clear_reads(e=None):
         """clear all recorded data and sparklines"""
