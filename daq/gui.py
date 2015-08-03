@@ -715,7 +715,7 @@ def main(e=None):
                 + int(daq.data()[freeze_count-1][0]/ daq.conf[0].period  +1.1)
 #            print("DEBUG: implied_packets=",implied_packets, "freeze_count=", freeze_count, file=sys.stderr)
             if implied_packets>freeze_count:
-                errorlabel['text'] = "Warning: {0} packets dropped".format(implied_packets - freeze_count)
+                errorlabel['text'] = "Warning: {0} samples dropped".format(implied_packets - freeze_count)
                 errorlabel.grid(row=0, column=0)
             else:
                 errorlabel.grid_forget()
