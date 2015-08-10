@@ -1,9 +1,9 @@
 #include "targetlib.h"
 
 // TIM_WATCH_RATE is the rate at which tim_time advances (in Hz)
-#ifdef PLAT_ATMEGA
+#if PLAT_ATMEGA
 #define TIM_WATCH_RATE (F_CPU/8)
-#elif defined(PLAT_KINETIS)
+#elif PLAT_KINETIS
 #define TIM_WATCH_RATE (F_CPU)
 #endif
 

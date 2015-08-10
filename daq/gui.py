@@ -459,7 +459,7 @@ def main(e=None):
         consisting of (trigger, aref, avg, channel descriptors
         """
         trigger = core.TriggerTimed(secvar.get()) if triggertype.get() == 0 else core.TriggerPinchange(pinvar.get(), edgevar.get())
-        aref = 'Power'
+        aref = daq.board.default_aref
         avg = avgvar.get()
         channel_info =  [ ch.get_descriptor() for ch in inner_channel_frame.pack_slaves()]
         return (trigger, aref, avg, channel_info)

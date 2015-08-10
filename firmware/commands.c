@@ -229,7 +229,7 @@ void handle_command(void) {
     
     switch (cmd) {
         case 'V':
-            resp = DAQ_VERSION;
+            resp = (uint8_t*)DAQ_VERSION;
             resplen = sizeof(DAQ_VERSION) - 1;
             break;
         case 'C':
@@ -252,7 +252,7 @@ void handle_command(void) {
             readcount=0;    // reset counter for pseudotimer
             tim_watch();    // reset timer
             LED_handshake();
-            resp = HANDSHAKE_CODE;
+            resp = (uint8_t*)HANDSHAKE_CODE;
             resplen = sizeof(HANDSHAKE_CODE) - 1;
             break;
         case 'M':

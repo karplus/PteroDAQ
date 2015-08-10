@@ -30,7 +30,9 @@ class Board(object):
                         # or 5-tuples ("g*(X-Y)", channel number, "X","Y", gain)
     
     eint = ()   # tuple of pairs (interrupt pin name, interrupt number)
+    
     aref = ()   # tuple of pairs (analog reference name, code from data sheet)
+    default_aref = None # what analog reference name to use by default
     
     intsense = ()       # tuple of pairs
                         # (triggering type name, numeric code)
@@ -181,9 +183,10 @@ class ArduinoStandard(ArduinoAVR):
     eint = (
         ('D2', 0),
         ('D3', 1))
+    default_aref = 'Power'
     aref = (
         ('Power', 1),
-        ('External', 0),
+        ('AREF', 0),
         ('1.1V', 3))
 
 @Board.supported(2)
@@ -248,9 +251,10 @@ class ArduinoMega(ArduinoAVR):
         ('D19', 2),
         ('D20', 1),
         ('D21', 0))
+    default_aref = 'Power'
     aref = (
         ('Power', 1),
-        ('External', 0),
+        ('AREF', 0),
         ('1.1V', 2),
         ('2.56V', 3))
 
@@ -350,9 +354,10 @@ class Arduino32u4(ArduinoAVR):
         ('D2', 1),
         ('D3', 0),
         ('D7', 6))
+    default_aref = 'Power'
     aref = (
         ('Power', 1),
-        ('External', 0),
+        ('AREF', 0),
         ('2.56V', 3))
 
 @Board.supported(5)
@@ -398,9 +403,10 @@ class FreedomKL25(Board):
         #('is high', 4)
         # removed due to lack of rate-limiting causing hang
         )
+    default_aref = 'Power'
     aref = (
         ('Power', 1),
-        ('External', 0))
+        ('AREF', 0))
     avg = (
         ('1', 0),
         ('4', 4),
@@ -420,6 +426,112 @@ class FreedomKL25(Board):
         """
         # using SysTick
         base = 1./48000000
+        if period <= (1<<24)*base:
+            pr = 1
+            n = 1
+        else:
+            pr = 16
+            n = 0
+        reload = limit(round(period / (pr * base)) - 1, 1, (1<<24)-1)
+        actual = (reload + 1) * pr * base
+        return actual, (n, reload)
+    
+    def setup(self, model):
+        """unpacks model information sent from model info command
+            and updates parameters for power_voltage
+        """
+        self.power_voltage = 65536./(unpack_from('<H', model)[0]/self.bandgap)
+
+
+@Board.supported(6)
+class Teensy3_1(Board):
+    names = ('Teensy 3.1',)
+    bandgap = 1
+    # Note: all analog codes written assuming ADC0 and channel b
+    CHANB=64
+    ADC1=128
+    analogs = ( 
+        ('A0', 5+CHANB),      # PTD1  ADC0_SE5b
+        ('A1', 14),     # PTC0  ADC0_SE14
+        ('A2', 8),      # PTB0  ADC0_SE8, ADC1_SE8
+        ('A3', 9),      # PTB1  ADC0_SE9, ADC1_SE9
+        ('A4', 13),     # PTB3  ADC0_SE13
+        ('A5', 12),     # PTB2  ADC0_SE12
+        ('A6', 6+CHANB),      # PTD5  ADC0_SE6b
+        ('A7', 7+CHANB),      # PTD6  ADC0_SE7b
+        ('A8', 15),     # PTC1  ADC0_SE15
+        ('A9', 4+CHANB),      # PTC2  ADC0_SE4b
+        ('A10',0),      # ADC0_DP0 ADC1_DP3
+        ('A11',19),     # ADC0_DM0 ADC1_DM3
+        ('A12',3),      # ADC0_DP3 ADC1_DP1
+        ('A13',21),     # ADC0_DM3 ADC1_PM3
+        ('A14',23 ),    # DAC
+        ('Temperature',26),  
+        ('Bandgap 1V', 27),
+	('Vref 1.2V', 18+ADC1),
+#        ('Vref 1.2V', 22),
+#        ('Aref',29 )
+       ) 
+    # WARNING: digitals MUX numbers not set yet
+    # D pins only defined through D12 (to avoid conflict with A pins)
+    PTA=0
+    PTB=32
+    PTC=64
+    PTD=96
+    digitals = (
+        ('D0',  PTB+16),        #PTB16
+        ('D1',  PTB+17),        #PTB17
+        ('D2',  PTD+0 ),        #PTD0
+        ('D3',  PTA+12),        #PTA12
+        ('D4',  PTA+13),        #PTA13
+        ('D5',  PTD+7 ),        #PTD7
+        ('D6',  PTD+4 ),        #PTD4
+        ('D7',  PTD+2 ),        #PTD2
+        ('D8',  PTD+3 ),        #PTD3
+        ('D9',  PTC+3 ),        #PTC3
+        ('D10', PTC+4 ),        #PTC4
+        ('D11', PTC+6 ),        #PTC6
+        ('D12', PTC+7 ),        #PTC7
+        ('D13', PTC+5 )         #PTC5
+        # digitals that overlap analogs not written out yet
+    )
+    DIFF=32
+    differentials=(     # assuming ADC0 (swap for ADC1)
+        ('A10-A11', DIFF+0),
+        ('A12-A13', DIFF+3))
+    eint = digitals
+    intsense = (
+        ('rises', 1),
+        ('falls',  2),
+        ('changes', 3),
+        )
+    default_aref = 'AREF'
+    aref = (
+        ('AREF', 0),
+        ('1.2V', 1))
+    avg = (
+        ('1', 0),
+        ('4', 4),
+        ('8', 5),
+        ('16', 6),
+        ('32', 7))
+    default_avg='4'
+    # Programmable Gain Amplifier settings not done yet
+    # Use of ADC1 not done yet
+    
+    # TODO: Make F_CPU be returned from model command
+    #   and set timestamp_res in setup()
+    timestamp_res = 1/72e6 # Assuming 72MHz (NOT overclocked)
+
+    def timer_calc(self, period):
+        """computes counter parameters
+                n is index for prescaler
+                reload is counter period-1 in prescaled ticks
+                actual time in seconds
+            returns (actual, (n,reload))
+        """
+        # using SysTick
+        base = 1./72000000
         if period <= (1<<24)*base:
             pr = 1
             n = 1

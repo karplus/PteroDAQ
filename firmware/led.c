@@ -2,7 +2,7 @@
 #include "led.h"
 #include "tim.h"
 
-#ifdef PLAT_ATMEGA
+#if (PLAT_ATMEGA || PLAT_TEENSY31)
 
 #define LED_pin (13)
 
@@ -44,7 +44,7 @@ void LED_handshake(void){
     }
 }
 
-#elif defined(PLAT_KINETIS)
+#elif PLAT_KL25Z
 
 // red   led on PTB18 is TPM2_CH0
 // green led on PTB19 is TPM2_CH1

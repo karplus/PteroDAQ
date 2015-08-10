@@ -1,7 +1,7 @@
 #include "targetlib.h"
 #include "adc.h"
 
-#ifdef PLAT_ATMEGA
+#if PLAT_ATMEGA
 #include <util/delay.h>
 
 // returns a pointer to a static response byte array
@@ -31,7 +31,7 @@ uint8_t* get_model(void) {
         resp[0] = 3;
     #endif
     resp[1] = 0;
-    adc_aref(1); // power supply as reference
+    adc_aref(DEFAULT_AREF); // power supply as reference
     #if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
         #define BANDGAP_PORT (14)
     #else
@@ -56,16 +56,16 @@ uint8_t* get_model(void) {
     return resp;
 }
 
-#elif defined(PLAT_KINETIS)
+#elif PLAT_KINETIS
 #define BANDGAP_PORT (0x1B)
 uint8_t* get_model(void) {
     static uint8_t resp[MODEL_INFO_LEN];
     uint16_t bandgap;
     uint32_t sum_bandgap;
 
-    resp[0] = 5;
+    resp[0] = MODEL_BOARDNUM;
     resp[1] = 0;
-    adc_aref(1); // power supply as reference
+    adc_aref(DEFAULT_AREF); // power supply as reference
     adc_avg(0x7);  // do 32x hardware averaging
     bandgap = adc_read(BANDGAP_PORT); // read bandgap and discard
     // average 64 readings

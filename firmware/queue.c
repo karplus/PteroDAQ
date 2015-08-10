@@ -1,11 +1,5 @@
 #include "queue.h"
 
-#if PLAT_ATMEGA
-#define QUEUE_SIZE 1024
-#elif PLAT_KINETIS
-#define QUEUE_SIZE 8192
-#endif
-
 static volatile uint8_t queue_data[QUEUE_SIZE];
 static volatile uint16_t queue_head, queue_tail;
 static volatile bool queue_wrotelast;

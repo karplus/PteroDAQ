@@ -1,13 +1,16 @@
 extern "C" {
-    #include "ser.h"
+#include "ser.h"
 }
 
 #if PLAT_ATMEGA
+#include "HardwareSerial.h"
+#elif PLAT_TEENSY31
+#include "usb_serial.h"
+#endif
 
-#include "Arduino.h"
+#if (PLAT_ATMEGA || PLAT_TEENSY31)
 
 extern "C" {
-
 #define MAX_PACKET_SIZE (64)
 uint8_t ser_buffer[MAX_PACKET_SIZE];
 uint8_t ser_buffer_used=0;
@@ -38,9 +41,10 @@ void ser_flushout(void) {
     Serial.write(ser_buffer, ser_buffer_used);
     ser_buffer_used=0;
 }
+
 }
 
-#elif PLAT_KINETIS
+#elif PLAT_KL25Z
 
 #include "USBSerial.h"
 
