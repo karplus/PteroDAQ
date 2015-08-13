@@ -54,11 +54,14 @@ uint64_t tim_time(void) {
 #elif PLAT_TEENSY31
 
 // On the Teensy3.1, the SysTick is always the CPU clock, so we use
-//	one periodic interrupt timer (PIT) to get a 32-bit timer.
-// The Teensy3.1 has 4 PIT timers available, so PIT2 will be used here.
+//    One periodic interrupt timer (PIT2) to get a 32-bit timer for interrupt.
+//    Two PIT timers (PIT0 and PIT1) to get a 64-bit timestamp.
 
 // Future upgrade: go to 64-bit timer (PITs 2 and 3) to get longer
-//	interval than 44s.
+//	interval than 119.3s
+
+// PIT timers are run off the BUS CLOCK (no prescaler)
+// 	so prescale is ignored in tim_trigger
 
 void tim_trigger(uint8_t prescale, uint32_t reload) {
     SIM_SCGC6 |= SIM_SCGC6_PIT; // clock gate enable
@@ -90,6 +93,7 @@ void pit2_isr(void) {
 
 
 // PITs 0 and 1 are used for timestamps.
+
 
 void tim_watch(void) {
     SIM_SCGC6 |= SIM_SCGC6_PIT; // clock gate enable

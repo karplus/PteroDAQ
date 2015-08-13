@@ -521,7 +521,9 @@ class Teensy3_1(Board):
     
     # TODO: Make F_CPU be returned from model command
     #   and set timestamp_res in setup()
-    timestamp_res = 1/72e6 # Assuming 72MHz (NOT overclocked)
+    
+    # PIT0&1 run off bus clock, which is half system (72MHz ,not overclocked)
+    timestamp_res = 1/36e6 
 
     def timer_calc(self, period):
         """computes counter parameters
@@ -530,16 +532,11 @@ class Teensy3_1(Board):
                 actual time in seconds
             returns (actual, (n,reload))
         """
-        # using SysTick
-        base = 1./72000000
-        if period <= (1<<24)*base:
-            pr = 1
-            n = 1
-        else:
-            pr = 16
-            n = 0
-        reload = limit(round(period / (pr * base)) - 1, 1, (1<<24)-1)
-        actual = (reload + 1) * pr * base
+        # using PIT2, which runs off the bus clock (half system clock)
+        base = 1./36e6
+        n = 1	# there is no prescaler for the PIT, so this number is irrelevant
+        reload = limit(round(period / base) - 1, 1, (1<<32)-1)
+        actual = (reload + 1) * base
         return actual, (n, reload)
     
     def setup(self, model):
