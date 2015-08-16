@@ -12,7 +12,7 @@
 // On KL25Z, the timing interrupts are based on the SysTick counter,
 //	which is prescaled from the CPU clock
 
-void time_start(void){
+void tim_start(void){
 }
 
 void tim_trigger(uint8_t prescale, uint32_t reload) {
