@@ -456,9 +456,30 @@ def main(e=None):
 
     def makeconf():
         """Constructs a tuple for passing to DataAcquistion.config()
-        consisting of (trigger, aref, avg, channel descriptors
+        consisting of (trigger, aref, avg, channel descriptors)
+        
+        returns None if the time trigger is not parseable
+        
         """
-        trigger = core.TriggerTimed(secvar.get()) if triggertype.get() == 0 else core.TriggerPinchange(pinvar.get(), edgevar.get())
+        if triggertype.get() == 0:
+            try: 
+                sec = secvar.get()
+                if sec <=0:
+                    raise ValueError('Period must be >0, not {}'.format(sec))
+                trigger = core.TriggerTimed(sec)
+            except ValueError as err:
+                print(err, file=sys.stderr)
+                try:
+                    hz = hzvar.get()
+                    if hz <=0:
+                        raise ValueError('Frequency must be >0, not {}'.format(hz))
+                    trigger = core.TriggerTimed(1./hz)
+                except ValueError as errhz:
+                    print(errhz, file=sys.stderr)
+                    return None
+        else:
+            trigger =  core.TriggerPinchange(pinvar.get(), edgevar.get())
+
         aref = daq.board.default_aref
         avg = avgvar.get()
         channel_info =  [ ch.get_descriptor() for ch in inner_channel_frame.pack_slaves()]
@@ -488,9 +509,12 @@ def main(e=None):
             # This is questionable---restarting to get a new 0 time point
             # might be useful in marking human-observable events
             return
+        config = makeconf()
+        if config is None:
+            return
         statelabel['text'] = 'Recording'
         errorlabel.grid_forget()
-        daq.config(makeconf())
+        daq.config(config)
         if daq.is_timed_trigger():
             secvar.set(engineering_format(daq.conf[0].period,decimals=6))
         daq.go()
@@ -501,7 +525,10 @@ def main(e=None):
         daq.stop()
         powerlabel['text'] = power_voltage_str()
     def oneread(e=None):
-        daq.config(makeconf())
+        config = makeconf()
+        if config is None:
+            return
+        daq.config(config)
         if daq.is_timed_trigger():
             secvar.set(engineering_format(daq.conf[0].period,decimals=6))
         daq.oneread()
@@ -541,6 +568,9 @@ def main(e=None):
         """
         global last_file_saved
         pauserec()
+        config = makeconf()
+        if config is None:
+            return
         if last_file_saved:
             dir,file_base = os.path.split(last_file_saved)
             last_file_saved = tkf.asksaveasfilename(defaultextension='.txt',
@@ -550,7 +580,7 @@ def main(e=None):
         if last_file_saved:
             daq.save(last_file_saved, notes=notesbox.get('1.0', 'end'), 
                 convvolts = use_power_voltage.get(),
-                new_conf=makeconf()
+                new_conf=config
                 )
         return last_file_saved
     
