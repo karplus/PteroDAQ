@@ -2,7 +2,7 @@
 #include "led.h"
 #include "tim.h"
 
-#if (PLAT_ATMEGA || PLAT_TEENSY31)
+#if (PLAT_ATMEGA || PLAT_TEENSY31 || PLAT_TEENSYLC)
 
 #define LED_pin (13)
 
@@ -12,16 +12,16 @@ void LED_start(void){
     uint64_t flash_time;
 
     pinMode(LED_pin, 1); // output
-    tim_watch();
+    timestamp_start();
     
     // 1 second of accelerating flashes
-    for (flash_time = TIM_WATCH_RATE/4; flash_time > 0; flash_time = flash_time>>1) {
+    for (flash_time = TIMESTAMP_START_RATE/4; flash_time > 0; flash_time = flash_time>>1) {
         digitalWrite(LED_pin, 1);
-        time = tim_time();
-        while (tim_time() < time+flash_time);
+        time = timestamp_get();
+        while (timestamp_get() < time+flash_time);
         digitalWrite(LED_pin, 0);
-        time = tim_time();
-        while (tim_time() < time+flash_time);
+        time = timestamp_get();
+        while (timestamp_get() < time+flash_time);
     }
 }
 
@@ -31,16 +31,16 @@ void LED_handshake(void){
     uint8_t i;
     
     pinMode(LED_pin, 1); // output
-    tim_watch();
+    timestamp_start();
 
     // flash 4 times
     for (i=0; i<4; i++){
         digitalWrite(LED_pin, 1);
-        time = tim_time();
-        while (tim_time() < time+TIM_WATCH_RATE/16);
+        time = timestamp_get();
+        while (timestamp_get() < time+TIMESTAMP_START_RATE/16);
         digitalWrite(LED_pin, 0);
-        time = tim_time();
-        while (tim_time() < time+TIM_WATCH_RATE/16);
+        time = timestamp_get();
+        while (timestamp_get() < time+TIMESTAMP_START_RATE/16);
     }
 }
 
@@ -98,7 +98,7 @@ void LED_start(void){
     uint64_t time;
     uint16_t i;
     tpm_init();
-    tim_watch();  // start a 64-bit timer
+    timestamp_start();  // start a 64-bit timer
     
     
     RED_DUR = 0;
@@ -109,8 +109,8 @@ void LED_start(void){
     for (i = 0; i <= PWM_MOD/2; i+= PWM_MOD/50) {
         RED_DUR = i;
         GREEN_DUR = i;
-        time = tim_time();
-        while (tim_time() < time+ (uint64_t)(TIM_WATCH_RATE/50)); // 20 ms
+        time = timestamp_get();
+        while (timestamp_get() < time+ (uint64_t)(TIMESTAMP_START_RATE/50)); // 20 ms
     }
     // dim yellow
     RED_DUR= PWM_MOD/4;
@@ -125,9 +125,9 @@ void LED_handshake(void){
     GREEN_DUR=0;
     BLUE_DUR = (7*PWM_MOD)/10;
     RED_DUR = (7*PWM_MOD)/10;
-    tim_watch();
-    time = tim_time();
-    while (tim_time() < time+(uint64_t)(TIM_WATCH_RATE/2)); // 500 ms
+    timestamp_start();
+    time = timestamp_get();
+    while (timestamp_get() < time+(uint64_t)(TIMESTAMP_START_RATE/2)); // 500 ms
     // dim yellow
     RED_DUR= PWM_MOD/4;
     GREEN_DUR=PWM_MOD/4;

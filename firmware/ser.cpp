@@ -4,11 +4,11 @@ extern "C" {
 
 #if PLAT_ATMEGA
 #include "HardwareSerial.h"
-#elif PLAT_TEENSY31
+#elif PLAT_TEENSY31 || PLAT_TEENSYLC
 #include "usb_serial.h"
 #endif
 
-#if (PLAT_ATMEGA || PLAT_TEENSY31)
+#if (PLAT_ATMEGA || PLAT_TEENSY31 || PLAT_TEENSYLC)
 
 extern "C" {
 #define MAX_PACKET_SIZE (64)

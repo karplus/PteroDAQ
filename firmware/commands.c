@@ -63,6 +63,7 @@ static volatile uint32_t readcount = 0;
     // how many timer interrupts for psuedo-timer have there been.
   
 void daq_setup(void) {
+    tim_start();
     adc_init();
     pio_init();
     ser_init();
@@ -116,7 +117,7 @@ void trigger_handler(void) {
     if (conf.trigtype == 1) {
         queue_push32(readcount-1);
     } else {
-        queue_push64(tim_time());
+        queue_push64(timestamp_get());
     }
     // for each channel
     for (ind = 0; ind < conf.channelcount; ind++) {
@@ -184,7 +185,7 @@ void start_running(void) {
         readcount=0;    // restart pseudotimer
         tim_trigger(conf.trigprescale, conf.trigreload);
     } else if (conf.trigtype == 2) {
-        tim_watch();    // restart timer
+        timestamp_start();    // restart timer
         pio_trigger(conf.trigintpin, conf.trigintsense);
     } else {
         report_error(0x2,1,&(conf.trigtype));  //trigger type not recognized
@@ -250,7 +251,7 @@ void handle_command(void) {
             stop_running();
             queue_clear();
             readcount=0;    // reset counter for pseudotimer
-            tim_watch();    // reset timer
+            timestamp_start();    // reset timer
             LED_handshake();
             resp = (uint8_t*)HANDSHAKE_CODE;
             resplen = sizeof(HANDSHAKE_CODE) - 1;

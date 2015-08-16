@@ -71,6 +71,24 @@ void digitalWrite(uint8_t, uint8_t);
 #define DEFAULT_AREF (0)
 #define QUEUE_SIZE (32768)
 
+/////////////////////////////////////////
+#elif defined(__MKL26Z64__)
+
+// Teensy LC
+#include "core_pins.h"
+#include "kinetis.h"
+
+#define ENABLE_INTERRUPT() __enable_irq()
+#define DISABLE_INTERRUPT() __disable_irq()
+
+#define PLAT_KINETIS 1
+#define PLAT_TEENSYLC 1
+#define MODEL_INFO_LEN (4)
+#define MODEL_BOARDNUM (7)
+#define DEFAULT_AREF (1)
+#define QUEUE_SIZE (4096)
+
+
 #endif
 
 void daq_setup(void);

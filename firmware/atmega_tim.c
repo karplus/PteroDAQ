@@ -5,6 +5,9 @@
 static volatile uint32_t longticks;
 static uint16_t wrap_to;
 
+void tim_start(void){
+}
+
 // Set up TIM1 to be a timer used as a watch
 void tim_watch(void) {
     longticks = 0; // clear software counter
@@ -17,7 +20,7 @@ void tim_watch(void) {
 
 // Fetch the time since time_watch() was called
 //  returns ticks which are 8/F_CPU seconds each
-uint64_t tim_time(void) {
+uint64_t timestamp_get(void) {
     // complicated to avoid race conditions with timer overflows
     // in most cases, equiv to return (longticks << 16) | TCNT1
     // checks for overflows to ensure consistency between

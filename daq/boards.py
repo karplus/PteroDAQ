@@ -383,7 +383,9 @@ class FreedomKL25(Board):
         ('PTE30', 23),
         ('Temperature', 26),
         ('Bandgap', 27),
-        ('Aref', 29)) # To Do: internal differentials?
+#        ('Aref', 29)
+        )
+         # To Do: internal differentials?
     digitals = tuple(('PT{0}{1}'.format(port[0], pin), (n * 32 + pin)) for n, port in enumerate((
             ('A', (1, 2, 4, 5, 12, 13, 14, 15, 16, 17)),
             ('B', (0, 1, 2, 3, 8, 9, 10, 11)),
@@ -468,12 +470,12 @@ class Teensy3_1(Board):
         ('A14',23 ),    # DAC
         ('Temperature',26),  
         ('Bandgap 1V', 27),
-	('Vref 1.2V', 18+ADC1),
+        ('Vref 1.2V', 18+ADC1),
 #        ('Vref 1.2V', 22),
 #        ('Aref',29 )
        ) 
-    # WARNING: digitals MUX numbers not set yet
-    # D pins only defined through D12 (to avoid conflict with A pins)
+
+    # D pins only defined through D13 (to avoid conflict with A pins)
     PTA=0
     PTB=32
     PTC=64
@@ -534,7 +536,7 @@ class Teensy3_1(Board):
         """
         # using PIT2, which runs off the bus clock (half system clock)
         base = 1./36e6
-        n = 1	# there is no prescaler for the PIT, so this number is irrelevant
+        n = 1   # there is no prescaler for the PIT, so this number is irrelevant
         reload = limit(round(period / base) - 1, 1, (1<<32)-1)
         actual = (reload + 1) * base
         return actual, (n, reload)
@@ -544,6 +546,116 @@ class Teensy3_1(Board):
             and updates parameters for power_voltage
         """
         self.power_voltage = 65536./(unpack_from('<H', model)[0]/self.bandgap)
+
+@Board.supported(7)
+class Teensy_LC(Board):
+    names = ('Teensy LC',)
+    bandgap = 1
+    CHANB=0x40
+    DIFF=0x20
+    analogs = ( 
+        ('A0', CHANB+5),        # PTD1  ADC0_SE5b
+        ('A1', 14),             # PTC0  ADC0_SE14
+        ('A2',  8),     # PTB0  ADC0_SE8
+        ('A3',  9),     # PTB1  ADC0_SE9
+        ('A4',  13),    # PTB3  ADC0_SE13
+        ('A5',  12),    # PTB2  ADC0_SE12
+        ('A6',  CHANB+6),       # PTD5  ADC0_SE6b
+        ('A7',  CHANB+7),       # PTD6  ADC0_SE7b
+        ('A8',  15),    # PTC1  ADC0_SE15
+        ('A9',  11),    # PTC2  ADC0_SE11
+        ('A10', 0),     # PTE20  ADC0_SE0
+        ('A11', 4),     # PTE21  ADC0_SE4a
+        ('A12', 23),    # PTE30  ADC0_SE23
+        ('Temperature',26),  
+        ('Bandgap 1V', 27),
+#        ('Aref',29 )
+       ) 
+    # D pins only defined through D13 (to avoid conflict with A pins)
+    PTA=0
+    PTB=32
+    PTC=64
+    PTD=96
+    digitals = (
+        ('D0',  PTB+16),
+        ('D1',  PTB+17),
+        ('D2',  PTD+0 ),
+        ('D3',  PTA+1),
+        ('D4',  PTA+2),
+        ('D5',  PTD+7 ),
+        ('D6',  PTD+4 ),
+        ('D7',  PTD+2 ),
+        ('D8',  PTD+3 ),
+        ('D9',  PTC+3 ),
+        ('D10', PTC+4 ),
+        ('D11', PTC+6 ),
+        ('D12', PTC+7 ),
+        ('D13', PTC+5 ) 
+        # digitals that overlap analogs not written out yet
+    )
+    DIFF=32
+    differentials=(
+        ('A10-A11', DIFF+0),
+        )
+    def make_eint(digitals,interrupt_ports):
+        # This strange function is here because list comprehensions
+        # ignore the class-scoped variables in Python3.
+        return [d for d in digitals if ((d[1] & ~0x1f) in interrupt_ports)]
+    eint=make_eint(digitals,{PTA,PTC,PTD})
+    intsense = (
+        ('rises', 1),
+        ('falls',  2),
+        ('changes', 3),
+        )
+    default_aref = 'Power'
+    aref = (
+        ('Power', 1),
+        ('AREF', 0))
+    avg = (
+        ('1', 0),
+        ('4', 4),
+        ('8', 5),
+        ('16', 6),
+        ('32', 7))
+    default_avg='4'
+    
+    # TODO: Make F_CPU be returned from model command
+    #   and set timestamp_res in setup()
+    
+    timestamp_res = 1/24e6 # approximately 0.04 microseconds
+
+    def timer_calc(self, period):
+        """computes counter parameters
+                n is index for prescaler
+                reload is counter period-1 in prescaled ticks
+                actual time in seconds
+            returns (actual, (n,reload))
+        """
+        # using LPTMR0
+        base = 1./16e6  # OSCERCLK (crystal frequency)
+        prescale_shift = 0
+        while period > base* (1<<(16+prescale_shift)) and prescale_shift<16:
+            prescale_shift += 1
+        pr = 1 << prescale_shift
+        reload = limit(round(period / (pr * base)) - 1, 1, (1<<16)-1)
+        actual = (reload + 1) * pr * base
+        if prescale_shift==0:
+            lptmr0_psr_value = (1<<2) + 0x3  # prescale bypass and OSCERCLK
+        else:
+            lptmr0_psr_value = ((prescale_shift-1)<<3) + 0x3
+#        print("DEBUG: (lptmr0_psr_value, reload) = ", hex(lptmr0_psr_value), hex(reload), file=sys.stderr)
+        return actual, (lptmr0_psr_value, reload)
+    
+    def setup(self, model):
+        """unpacks model information sent from model info command
+            and updates parameters for power_voltage
+        """
+        self.power_voltage = 65536./(unpack_from('<H', model)[0]/self.bandgap)
+
+
+
+
+
 
 def getboardinfo(model):
     boardnum = unpack_from('<H', model)[0]
