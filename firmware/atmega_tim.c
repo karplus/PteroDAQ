@@ -9,7 +9,7 @@ void tim_start(void){
 }
 
 // Set up TIM1 to be a timer used as a watch
-void tim_watch(void) {
+void timestamp_start(void) {
     longticks = 0; // clear software counter
     TCCR1A = 0; // no pwm output, normal mode
     TCNT1 = 0; // clear counter
