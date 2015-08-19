@@ -23,15 +23,14 @@ if version_info[0] == 3:
         return [a for a in x]
 else:
     # Python 2
-    #raise Exception('py2 support pending')
     def tobytes(x):
         return x
     def asbyte(x):
         return chr(x)
     def asint(x):
-        return ord(x)
+        return ord(x[0])
     def bytesum(x):
-        return sum(ord(c) for c in x)
+        return sum(bytearray(x))
     def tostr(x):
         return x
     def toints(bs):
@@ -119,14 +118,13 @@ class CommPort(object):
         and return the data from the response (a byte string).
         """
         mbase = b'!' + tobytes(c) + asbyte(len(d)) + d
-        msg = mbase + asbyte(-bytesum(bytes(mbase)) % 256)
+        msg = mbase + asbyte(-bytesum(mbase) % 256)
         while True:
 #            print("DEBUG: sending message", msg[:2],
 #                    " ".join(map(hex, toints(msg[2:]))), file=sys.stderr)
             self.ser.write(msg)
             self._respavail.wait(timeout=5)
             if not self._respavail.is_set():
-#                raise RuntimeError('Command timeout for command {}'.format(c))
                 print('Warning: Command timeout for command {}'.format(c),file=sys.stderr)
                 if c=='H':
                     print('Try killing port-select window, and rerunning after unplugging and replugging the board into the USB port',
@@ -134,46 +132,97 @@ class CommPort(object):
                 continue
             self._respavail.clear()
             cm, res = self._cmresp
-            if cm == tobytes(c):
+            if cm == ord(c):
                 return res
-            print('Warning: Invalid command response: sent {} command, response is {} {}'.format(c, cm, res), file=sys.stderr)
+            print('Warning: Invalid command response: sent {} command, response is {} {}'.format(c,
+                         chr(cm), res), file=sys.stderr)
     
-    def _readin(self):
-        """Read and process data from the serial port.
-        If it forms a command response, store in _cmresp and set _respavail.
-        If it forms a data record, call _datacallback with it.
-        """
-        rd = self.ser.read
-        # print('DEBUG: readin begin on self.ser=', self.ser, file=sys.stderr)
-        while self._do_readin:
-            c = rd(1)
-#            print("DEBUG: c=", c,"clock=", clock(), file=sys.stderr)
-            if c == b'!':
-                cm = rd(1)
-                ln = rd(1)
-                data = rd(asint(ln))
-                chk = rd(1)
-#                print('DEBUG: response=', c, cm, ln, data, chk, file=sys.stderr)
-                if len(chk)>0  and (asint(b'!') + asint(cm) + asint(ln) + bytesum(data) + asint(chk)) % 256 == 0:
-                    if cm == b'E':
-                        self._call_on_error(data)
+    if version_info[0] == 3:
+        # Python 3
+        def _readin(self):
+            """Read and process data from the serial port.
+            If it forms a command response, store in _cmresp and set _respavail.
+            _cmresp is tuple( integer command, bytes response)
+            If it forms a data record, call _datacallback with it.
+            """
+            rd = self.ser.read
+            int_star = b'*'[0]
+            int_bang = b'!'[0]
+            int_E = b'E'[0]
+            # print('DEBUG: readin begin on self.ser=', self.ser, file=sys.stderr)
+            while self._do_readin:
+                first_two=b''
+                while not first_two:
+                    first_two = rd(2)
+                c,cm = first_two
+    #            print("DEBUG: c=", c,"clock=", clock(), file=sys.stderr)
+                if c == int_bang:
+                    ln = rd(1)[0]
+                    data = rd(ln)
+                    chk = rd(1)
+                    if len(chk)>0  and (c+cm+ln + sum(data) + chk[0]) % 256 == 0:
+                        if cm == int_E:
+                            self._call_on_error(data)
+                        else:
+                            self._cmresp = cm, data
+                            self._respavail.set()
                     else:
-                        self._cmresp = cm, data
-                        self._respavail.set()
-                else:
-                    print('Warning: Checksum error on',cm,'packet',file=sys.stderr)
-            elif c == b'*':
-                ln = rd(1)
-                data = rd(asint(ln))
-                chk = rd(1)
-#                print('DEBUG: data=', data, 'clock=', clock(), file=sys.stderr)
-                if len(chk)>0 and (asint(b'*') + asint(ln) + bytesum(data) + asint(chk)) % 256 == 0:
-                    self._data_call_on_packet(data)
-                else:
-                    print('Warning: Checksum error on data packet.',file=sys.stderr)
-            elif c:
-                print('Warning: packet frame missing: expecting "!" or "*", but got', 
-                        hex(asint(c)), file=sys.stderr)
+                        print('Warning: Checksum error on',cm,'packet',file=sys.stderr)
+                elif c == int_star:
+                    ln = cm
+                    data = rd(ln)
+                    chk = rd(1)
+    #                print('DEBUG: data=', data, 'clock=', clock(), file=sys.stderr)
+                    if len(chk)>0 and (c + ln + sum(data) + chk[0]) % 256 == 0:
+                        self._data_call_on_packet(data)
+                    else:
+                        print('Warning: Checksum error on data packet.',file=sys.stderr)
+                elif c:
+                    print('Warning: packet frame missing: expecting "!" or "*", but got', 
+                            hex(c), file=sys.stderr)
+    else:    
+        # Python 2
+        def _readin(self):
+            """Read and process data from the serial port.
+            If it forms a command response, store in _cmresp and set _respavail.
+            If it forms a data record, call _datacallback with it.
+            """
+            rd = self.ser.read
+            int_star = ord(b'*')
+            int_bang = ord(b'!')
+            int_E = ord(b'E')
+            # print('DEBUG: readin begin on self.ser=', self.ser, file=sys.stderr)
+            while self._do_readin:
+                first_two=b''
+                while not first_two:
+                    first_two = rd(2)
+                c=ord(first_two[0])
+                cm = ord(first_two[1])
+    #            print("DEBUG: c=", c,"clock=", clock(), file=sys.stderr)
+                if c == int_bang:
+                    ln = ord(rd(1))
+                    data = rd(ln)
+                    chk = rd(1)
+                    if len(chk)>0  and (c+cm+ln + sum(bytearray(data)) + ord(chk)) % 256 == 0:
+                        if cm == int_E:
+                            self._call_on_error(data)
+                        else:
+                            self._cmresp = cm, data
+                            self._respavail.set()
+                    else:
+                        print('Warning: Checksum error on',cm,'packet',file=sys.stderr)
+                elif c == int_star:
+                    ln = cm
+                    data = rd(ln)
+                    chk = rd(1)
+    #                print('DEBUG: data=', data, 'clock=', clock(), file=sys.stderr)
+                    if len(chk)>0 and (c + ln + sum(bytearray(data)) + ord(chk)) % 256 == 0:
+                        self._data_call_on_packet(data)
+                    else:
+                        print('Warning: Checksum error on data packet.',file=sys.stderr)
+                elif c:
+                    print('Warning: packet frame missing: expecting "!" or "*", but got', 
+                            hex(c), file=sys.stderr)
     
     def _enum(self):
         """Keep track of the number of serial ports available.
