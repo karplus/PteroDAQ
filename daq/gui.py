@@ -138,16 +138,37 @@ class ChannelWidget(ttk.Frame):
         # which probe to use
         self.pinvar = pv = tk.StringVar()
         pv.set(daq.board.analogs[0][0]) 
-        pinchoice = tk.OptionMenu(self, pv, '')
-        pinchoice['menu'].delete(0)
-        for x in daq.board.analogs:
-            pinchoice['menu'].add_command(label=x[0], image=sineimg, command=tk._setit(pv, x[0], changeicon), compound='left')
-        for x in daq.board.differentials:
-            pinchoice['menu'].add_command(label=x[0], image=sineimg, command=tk._setit(pv, x[0], changeicon), compound='left')
-        for x in daq.board.digitals:
-            if not daq.board.is_analog(x[0]):   # BUG: suppresses digital channels with same names as analog channels
-                pinchoice['menu'].add_command(label=x[0], image=squareimg, command=tk._setit(pv, x[0], changeicon), compound='left')
-#        pinchoice['width'] = 100
+        
+        pinchoice = tk.Menubutton(self, textvariable=pv, indicatoron=True)
+        pintype_menu = tk.Menu(pinchoice, tearoff=False)
+        pinchoice.configure(menu=pintype_menu)
+        if daq.board.analogs:
+            analog_menu=tk.Menu(pintype_menu)
+            pintype_menu.add_cascade(label='Analog',image=sineimg,menu=analog_menu,compound='left')
+            for x in daq.board.analogs:
+                analog_menu.add_command(label=x[0],  command=tk._setit(pv, x[0], changeicon), compound='left')
+        if daq.board.differentials:            
+            differential_menu=tk.Menu(pintype_menu)
+            pintype_menu.add_cascade(label='Differential',image=sineimg,menu=differential_menu,compound='left')
+            for x in daq.board.differentials:
+                differential_menu.add_command(label=x[0],  command=tk._setit(pv, x[0], changeicon), compound='left')
+        if daq.board.digitals:            
+            digital_menu=tk.Menu(pintype_menu)
+            pintype_menu.add_cascade(label='Digital',image=squareimg,menu=digital_menu, compound='left')
+            for x in daq.board.digitals:
+                if not daq.board.is_analog(x[0]):
+                    digital_menu.add_command(label=x[0],  command=tk._setit(pv, x[0], changeicon), compound='left')
+        
+#        pinchoice = tk.OptionMenu(self, pv, '')
+#        pinchoice['menu'].delete(0)
+#        for x in daq.board.analogs:
+#            pinchoice['menu'].add_command(label=x[0], image=sineimg, command=tk._setit(pv, x[0], changeicon), compound='left')
+#        for x in daq.board.differentials:
+#            pinchoice['menu'].add_command(label=x[0], image=sineimg, command=tk._setit(pv, x[0], changeicon), compound='left')
+#        for x in daq.board.digitals:
+#            if not daq.board.is_analog(x[0]):   # BUG: suppresses digital channels with same names as analog channels
+#                pinchoice['menu'].add_command(label=x[0], image=squareimg, command=tk._setit(pv, x[0], changeicon), compound='left')
+##        pinchoice['width'] = 100
         pinchoice['compound'] = 'left'
         pinchoice['image'] = sineimg
         pinchoice['bg']=os_background_color

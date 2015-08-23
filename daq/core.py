@@ -47,9 +47,16 @@ firmware_version = b'v0.2' # code used in firmware to identify protocol version
 #       checksum: 1 byte such that modulo 256 sum of entire packet
 #               (including '*', len, timestamp, data, and checksum) is zero
 #
-#       Analog channels are sent first (2 bytes each, low-order first)
-#       Then digital channels are sent, packed 8-channels per byte
-#       with ith digital channel in (1<<(i-1))
+#	Note: the ordering of channels is set by the configuration command,
+#	as the firmware pushes each channel on the queue as it gets to it,
+#	except for digital channels that are pushed on the queue every time
+#	8 channels have accumulated (plus any leftovers at the end).
+#
+#	Frequency channels are sent as 4 bytes each, low-order first), 
+#		with count of number of rising edges observe since previous sample.
+#       Analog channels are sent ad 2 bytes each, low-order first).
+#       Digital channels are sent packed 8-channels per byte
+#       	with ith digital channel in (1<<(i-1))
 #
 #  The board can also report an Error with an E packet:
 #       '!E' + len + message + chk
@@ -81,11 +88,11 @@ firmware_version = b'v0.2' # code used in firmware to identify protocol version
 #         Trigger information:
 #           1, clock_prescale(1 byte),clock_value (4 bytes)       for timed trigger
 #           2, trigger_sense (1 byte board-specific code for rise/fall/change),trigger_pin (1 byte)
-#           Add 0x10 to first byte to require a serial flush after each data packet 
+#           Add 0x10 to first byte to require a serial flush after each data packet (so 0x11 for timed, 0x12 for external trigger)
 #         Analog reference code (1-byte, board specific)
 #         Code for hardware averaging (1-byte, board-specific)
 #         2-byte probe number for each channel
-#               low-order byte encodes analog=1,digital=2
+#               low-order byte encodes analog=1,digital=2,frequency=3
 #               high-order byte encodes mux value for analog or pin for digital
 #
 
@@ -95,11 +102,14 @@ firmware_version = b'v0.2' # code used in firmware to identify protocol version
 #
 #       Consider change to data packets when running timed triggers to use
 #          same time format as edge-triggered packets.  Could be used to
-#          get real time of interrupts on KL25Z.
+#          get real time of interrupts on boards with enough timing counters.
+#
+#	Change Hardware averaging code to be a per-channel choice, rather than shared by all analog channels.
 #
 #       Consider changing trigger_error to allow list of errors        
 #
 #       Reduce the number of error messages to console when packets are damaged.
+
 
 
 
