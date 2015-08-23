@@ -126,15 +126,6 @@ class ChannelWidget(ttk.Frame):
         self.menu.add_command(label='Move Down', command=self.move_down)
         self.menu.add_command(label='Remove', command=self.remove)
         
-        self.menu.add_separator()
-        self.display_type=tk.StringVar()
-        self.display_type.set('last value')
-        self.display_type.trace('w',lambda *args:update_data(force_refresh=True))
-        self.menu.add_radiobutton(label='last value', 
-                variable=self.display_type,value='last value')
-        self.menu.add_radiobutton(label='average', 
-                variable=self.display_type,value='average')
-        
         self.num = max(ChannelWidget.chnums) + 1
         ChannelWidget.chnums.add(self.num)
         
@@ -243,29 +234,22 @@ class ChannelWidget(ttk.Frame):
 #        print("DEBUG: len(visible_data)=",len(visible_data), file=sys.stderr)
         
         # update value at end of line
-        if self.display_type.get()=='last value':
-            self.average_label['text']=''
-            last_value = visible_data[-1]
-            if  self.descriptor.interpretation.is_analog and  use_power_voltage.get():
-                last_value = self.descriptor.volts(last_value,daq.board.power_voltage)
-                self.display_value['text']= "{0:.4f}".format(last_value)
-            else:
-                self.display_value['text']= last_value
-        elif self.display_type.get()=='average':
-            self.average_label['text']='DC:\nRMS:'
-            values = [x[chan_num] for x in daq.data()[self.x0:freeze_count]]
-            self.x0 = freeze_count
-            self.x1 += sum(values)
-            self.x2 += sum(x*x for x in values)
-            mean=self.x1/self.x0
-            rms=sqrt(self.x2/self.x0 - mean**2)
-            if  self.descriptor.interpretation.is_analog and  use_power_voltage.get():
-                mean = self.descriptor.volts(mean,daq.board.power_voltage)
-                rms = self.descriptor.volts(rms,daq.board.power_voltage)
-                self.display_value['text']= "{0:7.4f}\n{1:7.4f}".format(mean,rms)
-            else:
-                self.display_value['text']= "{0:7.1f}\n{1:7.1f}".format(mean,rms)
-        
+        self.average_label['text']='last:\nDC:\nRMS:'
+        last_value = visible_data[-1]
+        values = [x[chan_num] for x in daq.data()[self.x0:freeze_count]]
+        self.x0 = freeze_count
+        self.x1 += sum(values)
+        self.x2 += sum(x*x for x in values)
+        mean=self.x1/self.x0
+        rms=sqrt(self.x2/self.x0 - mean**2)
+        if  self.descriptor.interpretation.is_analog and  use_power_voltage.get():
+            last_value = self.descriptor.volts(last_value,daq.board.power_voltage)
+            mean = self.descriptor.volts(mean,daq.board.power_voltage)
+            rms = self.descriptor.volts(rms,daq.board.power_voltage)
+            self.display_value['text']= "{0:7.4f}\n{1:7.4f}\n{2:7.4f}".format(last_value,mean,rms)
+        else:
+            self.display_value['text']= "{0:7.0f}\n{1:7.4f}\n{2:7.4f}".format(last_value,mean,rms)
+
         if len(visible_data)<2:
             return      # too short make a line
             

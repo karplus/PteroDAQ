@@ -428,7 +428,7 @@ class FreedomKL25(Board):
         """
         # using PIT0&1, which runs off the bus clock (half system clock)
         base = 1./24e6
-        n = limit(int(period/base/(1<<32)),0,(1<<32)-1)
+        n = limit(int(period/base/(1<<32)),0,(1<<8)-1)
         reload = limit(round(period / base/ (n+1)) - 1, 1, (1<<32)-1)
         actual = (reload + 1)*(n+1) * base
         return actual, (n, reload)
@@ -531,7 +531,7 @@ class Teensy3_1(Board):
         """
         # using PIT0&1, which runs off the bus clock (half system clock)
         base = 1./36e6
-        n = limit(int(period/base/(1<<32)),0,(1<<32)-1)
+        n = limit(int(period/base/(1<<32)),0,(1<<8)-1)
         reload = limit(round(period / base/ (n+1)) - 1, 1, (1<<32)-1)
         actual = (reload + 1)*(n+1) * base
         return actual, (n, reload)
@@ -628,7 +628,7 @@ class Teensy_LC(Board):
         """
         # using PIT0&1, which runs off the bus clock (half system clock)
         base = 1./24e6
-        n = limit(int(period/base/(1<<32)),0,(1<<32)-1)
+        n = limit(int(period/base/(1<<32)),0,(1<<8)-1)
         reload = limit(round(period / base/ (n+1)) - 1, 1, (1<<32)-1)
         actual = (reload + 1)*(n+1) * base
         return actual, (n, reload)
