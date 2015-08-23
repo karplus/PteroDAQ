@@ -181,6 +181,7 @@ class DataAcquisition(object):
             buffer_per_sec = bytes_per_sec/63
             force_flush = 0x10 if buffer_per_sec < 20 else 0
             trigger.period, (clkdiv, clkval) = self.board.timer_calc(trigger.period)
+#            print("DEBUG: clkdiv=",clkdiv, "clkval=",clkval, file=sys.stderr)
             confsend.extend(struct.pack('<BBL', force_flush | 1, clkdiv, clkval))
         elif isinstance(trigger, TriggerPinchange):
             sense = next(x[1] for x in self.board.intsense if x[0] == trigger.sense)
@@ -220,7 +221,11 @@ class DataAcquisition(object):
         scale = self.board.power_voltage / 65536.
         with open(fn, 'w') as f:
             f.write('# PteroDAQ recording\n')
-            f.write('# {0:%Y %b %d %H:%M:%S}\n'.format(datetime.now()))
+            f.write('# saved at {0:%Y %b %d %H:%M:%S}\n'.format(datetime.now()))
+            if len(self.board.names)>1:
+                f.write('# board is one of {0}\n'.format( ", ".join(self.board.names)))
+            else:
+                f.write('# board is {0}\n'.format(self.board.names[0]))
             if isinstance(use_conf[0], TriggerTimed):
                 f.write('# Recording every {0} sec ({1} Hz)\n'.format(use_conf[0].period, 1./use_conf[0].period))
             elif isinstance(use_conf[0], TriggerPinchange):

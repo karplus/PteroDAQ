@@ -426,16 +426,11 @@ class FreedomKL25(Board):
                 actual time in seconds
             returns (actual, (n,reload))
         """
-        # using SysTick
-        base = 1./48000000
-        if period <= (1<<24)*base:
-            pr = 1
-            n = 1
-        else:
-            pr = 16
-            n = 0
-        reload = limit(round(period / (pr * base)) - 1, 1, (1<<24)-1)
-        actual = (reload + 1) * pr * base
+        # using PIT0&1, which runs off the bus clock (half system clock)
+        base = 1./24e6
+        n = limit(int(period/base/(1<<32)),0,(1<<32)-1)
+        reload = limit(round(period / base/ (n+1)) - 1, 1, (1<<32)-1)
+        actual = (reload + 1)*(n+1) * base
         return actual, (n, reload)
     
     def setup(self, model):
@@ -534,11 +529,11 @@ class Teensy3_1(Board):
                 actual time in seconds
             returns (actual, (n,reload))
         """
-        # using PIT2, which runs off the bus clock (half system clock)
+        # using PIT0&1, which runs off the bus clock (half system clock)
         base = 1./36e6
-        n = 1   # there is no prescaler for the PIT, so this number is irrelevant
-        reload = limit(round(period / base) - 1, 1, (1<<32)-1)
-        actual = (reload + 1) * base
+        n = limit(int(period/base/(1<<32)),0,(1<<32)-1)
+        reload = limit(round(period / base/ (n+1)) - 1, 1, (1<<32)-1)
+        actual = (reload + 1)*(n+1) * base
         return actual, (n, reload)
     
     def setup(self, model):
@@ -631,20 +626,12 @@ class Teensy_LC(Board):
                 actual time in seconds
             returns (actual, (n,reload))
         """
-        # using LPTMR0
-        base = 1./16e6  # OSCERCLK (crystal frequency)
-        prescale_shift = 0
-        while period > base* (1<<(16+prescale_shift)) and prescale_shift<16:
-            prescale_shift += 1
-        pr = 1 << prescale_shift
-        reload = limit(round(period / (pr * base)) - 1, 1, (1<<16)-1)
-        actual = (reload + 1) * pr * base
-        if prescale_shift==0:
-            lptmr0_psr_value = (1<<2) + 0x3  # prescale bypass and OSCERCLK
-        else:
-            lptmr0_psr_value = ((prescale_shift-1)<<3) + 0x3
-#        print("DEBUG: (lptmr0_psr_value, reload) = ", hex(lptmr0_psr_value), hex(reload), file=sys.stderr)
-        return actual, (lptmr0_psr_value, reload)
+        # using PIT0&1, which runs off the bus clock (half system clock)
+        base = 1./24e6
+        n = limit(int(period/base/(1<<32)),0,(1<<32)-1)
+        reload = limit(round(period / base/ (n+1)) - 1, 1, (1<<32)-1)
+        actual = (reload + 1)*(n+1) * base
+        return actual, (n, reload)
     
     def setup(self, model):
         """unpacks model information sent from model info command

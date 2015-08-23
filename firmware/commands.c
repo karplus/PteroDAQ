@@ -184,6 +184,7 @@ void start_running(void) {
     if (conf.trigtype == 1) {
         readcount=0;    // restart pseudotimer
         tim_trigger(conf.trigprescale, conf.trigreload);
+	trigger_handler();	// do first trigger at time ~0
     } else if (conf.trigtype == 2) {
         timestamp_start();    // restart timer
         pio_trigger(conf.trigintpin, conf.trigintsense);
