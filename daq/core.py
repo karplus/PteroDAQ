@@ -4,6 +4,7 @@ import sys
 import struct
 from datetime import datetime
 from collections import namedtuple
+from math import sqrt
 try:
     from future_builtins import zip
 except ImportError:     # either before Python2.6 or one of the Python 3.*
@@ -114,10 +115,11 @@ firmware_version = b'v0.2' # code used in firmware to identify protocol version
 
 
 class Interpretation(namedtuple('Interpretation', 
-                ['is_analog', 'is_signed', 'downsample', 'gain'])):
+                ['is_analog', 'is_signed', 'is_frequency', 'downsample', 'gain'])):
     """ information needed for interpreting a data stream
     is_analog: (Boolean) treat as an analog value, rather than digital input
     is_signed: (Boolean) treat as 2's-complement, rather than unsigned value
+    is_frequency: (Boolean) treat as a frequency rather than analog or digital value
     downsample: (int) keep only every nth value if downsample==n
     gain: divide read value down by gain to compensate for hardware amplifier
     """
@@ -179,12 +181,13 @@ class DataAcquisition(object):
     def config(self, conf):
         confsend = bytearray()
         trigger, aref, avg, channels = conf
-        #print('conf', conf)
+#        print('DEBUG: conf=', conf, file=sys.stderr)
         if  hasattr(self,'channels') and len(self.channels) != len(channels):
             self.clear()        # new config means old data is unusable
         self.channels = channels
         num_analog = sum(1 for ch in channels if ch.interpretation.is_analog)
-        num_digital = len(channels)-num_analog
+        num_frequency = sum(1 for ch in channels if ch.interpretation.is_frequency)
+        num_digital = len(channels)-num_analog-num_frequency
         if isinstance(trigger, TriggerTimed):
             data_packet_length = 7 + 2*num_analog + (num_digital+7)//8
             bytes_per_sec =  (1./trigger.period)*data_packet_length
@@ -247,25 +250,34 @@ class DataAcquisition(object):
                 f.write('# Scale: 0 to {0:.4f} volts\n'.format(self.board.power_voltage))
             else:
                 f.write('# Scale: 0 to 65535\n')
-            f.write('# Recording channels:\n')
-            f.write('#   timestamp (in seconds)\n')
-            
-            # Use passed-in configuration for names, rather than the ones saved
-            # but use saved for probes and downsampling
-            # Note that channels is the last field of the configuration tuple.
-            for ch_name,ch_probe in zip(new_conf[-1],use_conf[-1]):
-                downsample = ch_probe.interpretation.downsample
-                if downsample>1:
-                    f.write('#   {0} : {1} downsample by {2}\n'.format(ch_name.name, 
-                        self.board.name_from_probe[ch_probe.probe],
-                        downsample))
-                else:
-                    f.write('#   {0} : {1}\n'.format(ch_name.name, 
-                        self.board.name_from_probe[ch_probe.probe]))
             f.write('# Notes:\n')
             for ln in notes.split('\n'):
                 f.write('#   {0}\n'.format(ln))
-            f.write('# {0} samples\n'.format(len(self._data)))
+            x0 = len(self._data)
+            f.write('# {0} samples\n'.format(x0))
+
+            f.write('# Recording channels:\n')
+            f.write('#   timestamp (in seconds)\n')
+            # Use passed-in configuration for names, rather than the ones saved
+            # but use saved for probes and downsampling
+            # Note that channels is the last field of the configuration tuple.
+            for chan_num,(ch_name,ch_probe) in enumerate(zip(new_conf[-1],use_conf[-1])):
+                downsample = ch_probe.interpretation.downsample
+                if downsample>1:
+                    f.write('#   {0} : {1} downsample by {2}\t'.format(ch_name.name, 
+                        self.board.name_from_probe[ch_probe.probe],
+                        downsample))
+                else:
+                    f.write('#   {0} : {1}\t'.format(ch_name.name, 
+                        self.board.name_from_probe[ch_probe.probe]))
+                if x0:
+                    x1 = sum(d[chan_num+1]    for d in self._data)
+                    x2 = sum(d[chan_num+1]**2 for d in self._data)
+                    mean = x1/x0
+                    m2 = max(x2/x0-mean**2, 0)
+                    f.write(" DC= {0:.7g} RMS= {1:.7g}\n".format(mean, sqrt(m2)))
+                else:
+                    f.write('\n')
             old_time=0
             time_offset=None
             for d in self._data:
@@ -282,7 +294,9 @@ class DataAcquisition(object):
                     ch = self.channels[n]
                     f.write('\t')
                     if convvolts and ch.interpretation.is_analog:
-                        f.write(format(ch.volts(x,self.board.power_voltage), '.6f'))
+                        f.write("{0:.6f}".format(ch.volts(x,self.board.power_voltage)))
+                    elif ch.interpretation.is_frequency:
+                    	f.write("{0:.6f}".format(x))
                     else:
                         f.write(str(int(x)))
                 f.write('\n')
@@ -350,6 +364,19 @@ class DataAcquisition(object):
             if ch.interpretation.is_analog:
                 results[n] = struct.unpack_from('<h' if ch.interpretation.is_signed else '<H', rd, pos)[0]
                 pos += 2
+            elif ch.interpretation.is_frequency:
+                count = struct.unpack_from('<L', rd, pos)[0]
+                if self.is_timed_trigger():
+                    results[n] = count/self.conf[0].period
+                elif self._data:
+                    results[n] = count/(ts - self._data[-1][0])
+                else:
+                    results[n] = 0   
+                if len(self._data)==1:
+                    # replace the bogus first reading by duplicating second
+#                    print("DEBUG: replacing freq[0]", self._data[0][n], "with", results[n], file=sys.stderr)
+                    self._data[0][n] = results[n]   
+                pos += 4
             else:
                 digcount += 1
                 if not (digcount % 8):

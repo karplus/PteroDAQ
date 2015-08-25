@@ -14,8 +14,8 @@ void LED_start(void){
     pinMode(LED_pin, 1); // output
     timestamp_start();
     
-    // 1 second of accelerating flashes
-    for (flash_time = TIMESTAMP_START_RATE/4; flash_time > 0; flash_time = flash_time>>1) {
+    // 0.5 second of accelerating flashes (1/8+1/8  + 1/16+1/16 + ... )
+    for (flash_time = TIMESTAMP_START_RATE/8; flash_time > 0; flash_time = flash_time>>1) {
         digitalWrite(LED_pin, 1);
         time = timestamp_get();
         while (timestamp_get() < time+flash_time);
@@ -37,10 +37,10 @@ void LED_handshake(void){
     for (i=0; i<4; i++){
         digitalWrite(LED_pin, 1);
         time = timestamp_get();
-        while (timestamp_get() < time+TIMESTAMP_START_RATE/16);
+        while (timestamp_get() < time+TIMESTAMP_START_RATE/32);
         digitalWrite(LED_pin, 0);
         time = timestamp_get();
-        while (timestamp_get() < time+TIMESTAMP_START_RATE/16);
+        while (timestamp_get() < time+TIMESTAMP_START_RATE/32);
     }
 }
 

@@ -4,6 +4,7 @@
 #include "ser.h"
 #include "tim.h"
 #include "led.h"
+#include "frequency.h"
 
 #define DAQ_VERSION "v0.2" // must agree with firmware_version in Python code
 #define HANDSHAKE_CODE "DAQ"
@@ -52,6 +53,7 @@ struct Config {
     uint8_t channelcount;
     uint8_t channeltypes[64];
     uint8_t channelchoices[64];
+    uint8_t num_freqs;		// number of DMA channels used for frequency
 } conf;
 
 #define TRIG_FLUSH_EVERY (0x10)  // bit in trigtype to require flush after every data packet
@@ -66,6 +68,7 @@ void daq_setup(void) {
     tim_start();
     adc_init();
     pio_init();
+    freq_init();
     ser_init();
     LED_start();
 }
@@ -122,10 +125,16 @@ void trigger_handler(void) {
     // for each channel
     for (ind = 0; ind < conf.channelcount; ind++) {
         // record, push to queue
-        if (conf.channeltypes[ind] == 1) { // analog
-            queue_push16(adc_read(conf.channelchoices[ind]));
-        } else if (conf.channeltypes[ind] == 2) { // digital
-            queue_push1(pio_read(conf.channelchoices[ind]));
+        switch(conf.channeltypes[ind])
+	{case 1:	// analog
+	     queue_push16(adc_read(conf.channelchoices[ind]));
+	     break;
+         case 2:	// digital
+             queue_push1(pio_read(conf.channelchoices[ind]));
+	     break;
+	 case 3:	//frequency
+             queue_push32(freq_read(conf.channelchoices[ind]));
+	     break;
         }
     }
     queue_aggregate_bits();
@@ -158,14 +167,24 @@ void parse_config(uint8_t buf[], uint8_t len) {
     conf.arefchoice = buf[ind++];
     conf.avgana = buf[ind++];
     // channels
+    conf.num_freqs=0;	// number of frequency channels that have been defined
     while (ind < len) {
         conf.channeltypes[chnum] = buf[ind++];
-        if (conf.channeltypes[chnum] == 1) { // analog
-            datalen += 2;
-        } else if (conf.channeltypes[chnum] == 2) { // digital
-            digcount += 1;
+        switch(conf.channeltypes[chnum])
+	{case 1:	// analog
+	     datalen += 2;
+	     conf.channelchoices[chnum++] = buf[ind++];
+	     break;
+         case 2:	// digital
+             digcount += 1;
+	     conf.channelchoices[chnum++] = buf[ind++];
+	     break;
+	 case 3:	//frequency
+             datalen +=4 ;
+	     freq_define(conf.num_freqs,  buf[ind++]);
+	     conf.channelchoices[chnum++] = conf.num_freqs++;
+	     break;
         }
-        conf.channelchoices[chnum++] = buf[ind++];
     }
     conf.channelcount = chnum;
     datalen += (digcount + 7)/8;
@@ -181,6 +200,7 @@ void prepare_to_run(void){
 
 void start_running(void) {
     // start a run with the timers reset
+    freq_start(conf.num_freqs);
     if (conf.trigtype == 1) {
         readcount=0;    // restart pseudotimer
         tim_trigger(conf.trigprescale, conf.trigreload);
@@ -197,6 +217,7 @@ void start_running(void) {
 void stop_running(void) {
     tim_cancel();
     pio_cancel(conf.trigintpin);
+    freq_stop(conf.num_freqs);
     while (queue_avail()) {
         // empty the queue
         output_data();

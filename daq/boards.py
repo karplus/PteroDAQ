@@ -28,6 +28,9 @@ class Board(object):
     digitals=() # tuple of pairs (digital pin name, port and position code)
     differentials=()    # tuple of either pairs ("X-Y", channel number)
                         # or 5-tuples ("g*(X-Y)", channel number, "X","Y", gain)
+    frequencies=()	# tuple of tuple of pairs, 
+    			# 	each top-level being one port
+    			#	each pair being one pin of the port ("D0", channel_number)
     
     eint = ()   # tuple of pairs (interrupt pin name, interrupt number)
     
@@ -68,6 +71,13 @@ class Board(object):
             self.probe_from_name[name]=probe
             self.gain_from_name[name]=1
 
+        for flist in self.frequencies:
+            for name,mux in flist:
+                probe = 3 | (mux << 8)
+                self.name_from_probe[probe]=name
+                self.probe_from_name[name]=probe
+                self.gain_from_name[name]=1
+
         for diff in self.differentials:
             name = diff[0]
             mux = diff[1]
@@ -83,6 +93,10 @@ class Board(object):
     def is_analog(self,name):
         """Is this the name for a single-ended analog channel?"""
         return name in (x[0] for x in self.analogs)
+    
+    def is_frequency(self,name):
+        """Is this the name for a frequency channel?"""
+        return name in (x[0] for f in self.frequencies for x in f )
     
     def is_digital(self,name):
         """Is this the name for a digital channel?"""
@@ -597,6 +611,11 @@ class Teensy_LC(Board):
         # ignore the class-scoped variables in Python3.
         return [d for d in digitals if ((d[1] & ~0x1f) in interrupt_ports)]
     eint=make_eint(digitals,{PTA,PTC,PTD})
+    
+    def make_frequencies(digitals,dma_ports):
+    	return [ [("f({0})".format(d[0]),d[1]) for d in digitals if (d[1] & ~0x1f) == port] for port in dma_ports]
+    frequencies=make_frequencies(digitals,{PTA,PTC,PTD})
+    
     intsense = (
         ('rises', 1),
         ('falls',  2),
