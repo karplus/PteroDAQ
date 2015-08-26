@@ -876,8 +876,8 @@ class MasterFrame(ttk.Frame):
         freeze_count = len(daq.data())
         
         if daq.trigger_error:
-            errorlabel['text']= 'Warning: '+daq.trigger_error
-            errorlabel.grid(row=0, column=0)
+            self.errorlabel['text']= 'Warning: '+daq.trigger_error
+            self.errorlabel.grid(row=0, column=0)
         elif freeze_count \
             and freeze_count > daq.data_length_before_go \
                 and daq.is_timed_trigger():

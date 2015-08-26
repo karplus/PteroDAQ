@@ -410,7 +410,18 @@ class FreedomKL25(Board):
     differentials=(
         ('PTE20-PTE21', 32),
         ('PTE22-PTE23', 35))
-    eint = tuple(x for x in digitals if x[0][2] in ('A', 'D'))
+
+    
+    def make_eint(digitals,interrupt_ports):
+        # This strange function is here because list comprehensions
+        # ignore the class-scoped variables in Python3.
+        return [d for d in digitals if (d[0][:3] in interrupt_ports)]
+    eint=make_eint(digitals,{'PTA','PTD'})
+    
+    def make_frequencies(digitals,dma_ports):
+    	return [ [("f({0})".format(d[0]),d[1]) for d in digitals if d[0][:3]==port] for port in dma_ports ]
+    frequencies=make_frequencies(digitals,{'PTA','PTD'})
+
     intsense = (
         ('rises', 1),
         ('falls', 2),
