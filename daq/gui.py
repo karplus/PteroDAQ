@@ -484,7 +484,12 @@ class ChannelWidget(ttk.Frame):
         namefield.focus()
         
         # which probe to use
-        self.pinvar = tk.StringVar(value=daq.board.analogs[0][0])
+        pinnames_in_use = set(ch.pinvar.get() for ch in master_frame.channel_list())
+        try: 
+            pin_for_default = next(x[0] for x in daq.board.analogs if x[0] not in pinnames_in_use)
+        except StopIteration:
+            pin_for_default = daq.board.analogs[0][0]
+        self.pinvar = tk.StringVar(value=pin_for_default)
         pinchoice = ttk.Menubutton(self, textvariable=self.pinvar)
         pintype_menu = PinChoiceMenu(pinchoice,self.pinvar)
         pinchoice.configure(menu=pintype_menu)
@@ -655,13 +660,17 @@ class PortSelect(object):
         win.title('PteroDAQ - Select a Device')
         self.cb = cb
         self.port_frame = port_frame = ttk.Frame(win)
-        self.pl = ttk.Treeview(port_frame, show='tree', selectmode='browse', height=8)
+        self.pl = ttk.Treeview(port_frame, show='tree', selectmode='browse')
+        self.pl.bind('<Return>', self.useport)
         self.updateports()
         self.go_btn = ttk.Button(port_frame, text='Go', command=self.useport)
-        self.pl.pack(fill='both', expand='yes')
-        self.go_btn.pack()
+        self.pl.grid(row=0, column=0, sticky='news')
+        self.go_btn.grid(row=1,column=0, sticky='s')
+        port_frame.columnconfigure(0,weight=1)
+        port_frame.rowconfigure(0,weight=1)
         port_frame.pack(fill='both', expand='yes')
-    def useport(self):
+
+    def useport(self,*args):
         treeview_selections=self.pl.selection()
         if not treeview_selections:
             # nothing selected (probably no board plugged in)
@@ -950,8 +959,10 @@ root['menu'] = menubar
 appicon = tk.PhotoImage(file=os.path.join(maindir, 'extras/appicons/pterodaq512.gif'))
 root.tk.call('wm','iconphoto',root._w,appicon)
 
-root.geometry('300x300')
+root.geometry('280x200')
 
 ps = PortSelect(root, partial(daq.connect, call_when_done=startmain))
 
+root.lift()
+root.focus_force()
 root.mainloop()

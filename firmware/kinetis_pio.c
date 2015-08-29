@@ -57,11 +57,12 @@ void pio_init(void) {
     SIM_SCGC5 |= SIM_SCGC5_PORTA | SIM_SCGC5_PORTB | SIM_SCGC5_PORTC | SIM_SCGC5_PORTD | SIM_SCGC5_PORTE;
     // set as gpio just D0 through D13 
     // PTA12 PTA13 PTB16 PTB17 PTC3 PTC4 PTC5 PTC6 PTC7 PTD0 PTD2 PTD3 PTD4 PTD7
+    //	PTA5, PTB19, PTB18, PTA4
     // future extension: enable all pins not used for analog or something else
-    PORTA_GPCLR = (0x3000UL << 16) | PORT_PCR_MUX(1);
+    PORTA_GPCLR = (0x3030UL << 16) | PORT_PCR_MUX(1);
     PORTA_GPCHR = (0x0000UL << 16) | PORT_PCR_MUX(1);
     PORTB_GPCLR = (0x0000UL << 16) | PORT_PCR_MUX(1);
-    PORTB_GPCHR = (0x0003UL << 16) | PORT_PCR_MUX(1);
+    PORTB_GPCHR = (0x000FUL << 16) | PORT_PCR_MUX(1);
     PORTC_GPCLR = (0x00F8UL << 16) | PORT_PCR_MUX(1);
     PORTC_GPCHR = (0x0000UL << 16) | PORT_PCR_MUX(1);
     PORTD_GPCLR = (0x009DUL << 16) | PORT_PCR_MUX(1);
@@ -116,7 +117,7 @@ void portd_isr(void) {
 void pio_init(void) {
     // gate
     SIM_SCGC5 |= SIM_SCGC5_PORTA | SIM_SCGC5_PORTB | SIM_SCGC5_PORTC | SIM_SCGC5_PORTD | SIM_SCGC5_PORTE;
-    // set as gpio just D0 through D13 
+    // set as gpio just D0 through D13 and D24,D25, D32,D33
     // PTA1 PTA2 PTB16 PTB17 PTC3 PTC4 PTC5 PTC6 PTC7 PTD0 PTD2 PTD3 PTD4 PTD7
 
     // future extension: enable all pins not used for analog or something else

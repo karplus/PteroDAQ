@@ -473,29 +473,34 @@ class Teensy3_1(Board):
     CHANB=64
     ADC1=128
     analogs = ( 
-        ('A0', 5+CHANB),      # PTD1  ADC0_SE5b
+        ('A0', 5|CHANB),      # PTD1  ADC0_SE5b
         ('A1', 14),     # PTC0  ADC0_SE14
         ('A2', 8),      # PTB0  ADC0_SE8, ADC1_SE8
         ('A3', 9),      # PTB1  ADC0_SE9, ADC1_SE9
         ('A4', 13),     # PTB3  ADC0_SE13
         ('A5', 12),     # PTB2  ADC0_SE12
-        ('A6', 6+CHANB),      # PTD5  ADC0_SE6b
-        ('A7', 7+CHANB),      # PTD6  ADC0_SE7b
+        ('A6', 6|CHANB),      # PTD5  ADC0_SE6b
+        ('A7', 7|CHANB),      # PTD6  ADC0_SE7b
         ('A8', 15),     # PTC1  ADC0_SE15
-        ('A9', 4+CHANB),      # PTC2  ADC0_SE4b
+        ('A9', 4|CHANB),      # PTC2  ADC0_SE4b
         ('A10',0),      # ADC0_DP0 ADC1_DP3
         ('A11',19),     # ADC0_DM0 ADC1_DM3
         ('A12',3),      # ADC0_DP3 ADC1_DP1
-        ('A13',21),     # ADC0_DM3 ADC1_PM3
+#        ('A13',21),     # ADC0_DM3 ADC1_DM0	# Didn't work on ADC0 !
+        ('A13',19|ADC1),     # ADC0_DM3 ADC1_DM0
         ('A14',23 ),    # DAC
+        ('A15',5|ADC1),	# D26	PTE1 ADC1_SE5a
+        ('A16',5|CHANB|ADC1),	# D27	PTC9 ADC1_SE5b
+        ('A17',4|CHANB|ADC1),	# D28	PTC8 ADC1_SE4b
+        ('A18',6|CHANB|ADC1),	# D29	PTC10 ADC1_SE6b
+        ('A19',7|CHANB|ADC1),	# D30	PTC11 ADC1_SE7b
+        ('A20',4|ADC1),	# D31	PTE0 ADC1_SE4a
         ('Temperature',26),  
         ('Bandgap 1V', 27),
-        ('Vref 1.2V', 18+ADC1),
-#        ('Vref 1.2V', 22),
+        ('Vref 1.2V', 18|ADC1),		# didn't work on ADC0
 #        ('Aref',29 )
        ) 
 
-    # D pins only defined through D13 (to avoid conflict with A pins)
     PTA=0
     PTB=32
     PTC=64
@@ -515,8 +520,14 @@ class Teensy3_1(Board):
         ('D10', PTC+4 ),        #PTC4
         ('D11', PTC+6 ),        #PTC6
         ('D12', PTC+7 ),        #PTC7
-        ('D13', PTC+5 )         #PTC5
-        # digitals that overlap analogs not written out yet
+        ('D13', PTC+5 ),        #PTC5
+        # Digitals that overlap analogs not included
+        #	(analog meaning takes precendence)
+        # Consider trading off A15 and A20 to get extra frequency channel (Port E)
+        ('D24',	PTA+5),
+        ('D25', PTB+19),
+        ('D32', PTB+18),
+        ('D33', PTA+4),		# NMI if port pin not made GPIO
     )
     DIFF=32
     differentials=(     # assuming ADC0 (swap for ADC1)
@@ -526,7 +537,7 @@ class Teensy3_1(Board):
     
     def make_frequencies(digitals,dma_ports):
     	return [ [("f({0})".format(d[0]),d[1]) for d in digitals if (d[1] & ~0x1f) == port] for port in dma_ports]
-    frequencies=make_frequencies(digitals, (PTC,PTD,PTA,PTB,PTE))
+    frequencies=make_frequencies(digitals, (PTB,PTD,PTA,PTC,PTE))
 
     intsense = (
         ('rises', 1),
@@ -627,7 +638,7 @@ class Teensy_LC(Board):
         # This strange function is here because list comprehensions
         # ignore the class-scoped variables in Python3.
         return [d for d in digitals if ((d[1] & ~0x1f) in interrupt_ports)]
-    eint=make_eint(digitals, (PTA,PTC,PTD))
+    eint=make_eint(digitals, (PTD,PTA,PTC))
     
     def make_frequencies(digitals,dma_ports):
     	return [ [("f({0})".format(d[0]),d[1]) for d in digitals if (d[1] & ~0x1f) == port] for port in dma_ports]
