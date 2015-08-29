@@ -37,7 +37,15 @@
 //  data: array of bytes
 //  checksum: 1 byte such that modulo 256 sum of entire msg (including '*', length, and checksum) is zero
 
-
+#if (PLAT_TEENSY31 || PLAT_TEENSYLC)
+// TODO move somewhere better - can't go in ser.cpp because won't compile as C++
+#include "usb_names.h"
+struct usb_string_descriptor_struct usb_string_product_name = {
+    36,
+    3,
+    {'P','t','e','r','o','D','A','Q',' ','(','T','e','e','n','s','y',')'}
+};
+#endif
 
 uint8_t datalen;
 
