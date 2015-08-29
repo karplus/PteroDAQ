@@ -416,11 +416,11 @@ class FreedomKL25(Board):
         # This strange function is here because list comprehensions
         # ignore the class-scoped variables in Python3.
         return [d for d in digitals if (d[0][:3] in interrupt_ports)]
-    eint=make_eint(digitals,{'PTA','PTD'})
+    eint=make_eint(digitals, ('PTA', 'PTD'))
     
     def make_frequencies(digitals,dma_ports):
     	return [ [("f({0})".format(d[0]),d[1]) for d in digitals if d[0][:3]==port] for port in dma_ports ]
-    frequencies=make_frequencies(digitals,{'PTA','PTD'})
+    frequencies=make_frequencies(digitals, ('PTA', 'PTD'))
 
     intsense = (
         ('rises', 1),
@@ -526,7 +526,7 @@ class Teensy3_1(Board):
     
     def make_frequencies(digitals,dma_ports):
     	return [ [("f({0})".format(d[0]),d[1]) for d in digitals if (d[1] & ~0x1f) == port] for port in dma_ports]
-    frequencies=make_frequencies(digitals,{PTC,PTD,PTA,PTB,PTE})
+    frequencies=make_frequencies(digitals, (PTC,PTD,PTA,PTB,PTE))
 
     intsense = (
         ('rises', 1),
@@ -627,11 +627,11 @@ class Teensy_LC(Board):
         # This strange function is here because list comprehensions
         # ignore the class-scoped variables in Python3.
         return [d for d in digitals if ((d[1] & ~0x1f) in interrupt_ports)]
-    eint=make_eint(digitals,{PTA,PTC,PTD})
+    eint=make_eint(digitals, (PTA,PTC,PTD))
     
     def make_frequencies(digitals,dma_ports):
     	return [ [("f({0})".format(d[0]),d[1]) for d in digitals if (d[1] & ~0x1f) == port] for port in dma_ports]
-    frequencies=make_frequencies(digitals,{PTA,PTC,PTD})
+    frequencies=make_frequencies(digitals, (PTA,PTC,PTD))
     
     intsense = (
         ('rises', 1),

@@ -4,6 +4,7 @@ import os.path
 import sys
 from itertools import chain
 from math import sqrt,log
+from functools import partial
 
 try:
     import tkinter as tk
@@ -54,16 +55,6 @@ from comm import tostr
 
 maindir = os.path.normpath(os.path.join(os.path.abspath(__file__), '../..'))
 
-# iswindows = sys.platform in ('win32', 'cygwin')
-
-def lambdaize(func, *args):
-    """  Take a function and some arguments
-        and return an argumentless function that applies the given function to the arguments.
-        This is useful for freezing a set of arguments for menu commmands.
-    """
-    return lambda: func(*args)
-
-
 def engineering_format(f,width=None,decimals=5):
     """Convert floating-point number to string using 'engineering' format,
     which is like the standard scientific format %<width>.<decimals>e,
@@ -100,14 +91,14 @@ class CommandBar(ttk.Frame):
         # cache objects that we need access to for the commands
         
         ## define objects in commandbar Frame
-        self.statelabel = ttk.Label(self, text='Paused', font=('TkTextFont', 0, 'bold'), width=12)
+        self.statelabel = ttk.Label(self, text='Paused', font=('TkTextFont', 0, 'bold'), width=12, anchor='center')
         self.countlabel = ttk.Label(self, text='0')
         
-        recbutton = ImageButton(self, file=os.path.join(maindir, 'daq/icons/record.gif'), command=self.startrec)
-        pausebutton = ImageButton(self, file=os.path.join(maindir, 'daq/icons/pause.gif'), command=self.pauserec)
-        addchbutton = ImageButton(self, file=os.path.join(maindir, 'daq/icons/plus.gif'), command=self.newchannel)
-        singlebutton = ImageButton(self, file=os.path.join(maindir, 'daq/icons/one.gif'), command=self.oneread)
-        clearbutton = ImageButton(self, file=os.path.join(maindir, 'daq/icons/trash.gif'), command=self.ask_clear_reads)
+        recbutton = ImageButton(self, filename=os.path.join(maindir, 'daq/icons/record.gif'), command=self.startrec)
+        pausebutton = ImageButton(self, filename=os.path.join(maindir, 'daq/icons/pause.gif'), command=self.pauserec)
+        addchbutton = ImageButton(self, filename=os.path.join(maindir, 'daq/icons/plus.gif'), command=self.newchannel)
+        singlebutton = ImageButton(self, filename=os.path.join(maindir, 'daq/icons/one.gif'), command=self.oneread)
+        clearbutton = ImageButton(self, filename=os.path.join(maindir, 'daq/icons/trash.gif'), command=self.ask_clear_reads)
         savebutton = ttk.Button(self, command=self.savefile, text='Save')
         
         reclabel = ttk.Label(self, text='Record')
@@ -143,6 +134,7 @@ class CommandBar(ttk.Frame):
         if config is None:
             return
         self.statelabel['text'] = 'Recording'
+        root.title('PteroDAQ - Recording')
         master_frame.errorlabel.grid_forget()
         daq.config(config)
         if daq.is_timed_trigger():
@@ -152,8 +144,9 @@ class CommandBar(ttk.Frame):
     def pauserec(self,event=None):
         """Action to take when "Pause" button is pressed
         """
-        self.statelabel['text'] = 'Paused'
         daq.stop()
+        self.statelabel['text'] = 'Paused'
+        root.title('PteroDAQ - Paused')
         master_frame.other_global_options.powerlabel['text'] = master_frame.other_global_options.power_voltage_str()
 
     def oneread(self,event=None):
@@ -247,8 +240,8 @@ class TriggerOptions(ttk.Frame):
         self.triggertype = tk.IntVar()
         self.secvar = tk.DoubleVar()
         self.hzvar = tk.DoubleVar()
-        self.pinvar = tk.StringVar()
-        self.edgevar = tk.StringVar()
+        self.pinvar = tk.StringVar(value=daq.board.eint[0][0])
+        self.edgevar = tk.StringVar(value=daq.board.intsense[0][0])
         
         ## trace secvar and hzvar, so that they can be kept in sync
         self.secvar.trace('w', self.changetime)
@@ -259,8 +252,6 @@ class TriggerOptions(ttk.Frame):
         
         ## set default values
         self.set_period(0.1)
-        self.pinvar.set(daq.board.eint[0][0])
-        self.edgevar.set(daq.board.intsense[0][0])
         
         ## items for triggers widget        
         triggerlabel = ttk.Label(self, text='Trigger', font=('TkTextFont', 0, 'bold'))
@@ -352,23 +343,22 @@ class OtherGlobalOptions(ttk.Frame):
         ttk.Frame.__init__(self, master)
 
         # items for other_global_options
-        self.use_power_voltage = tk.IntVar()    # boolean, use power voltage for scaling
+        self.use_power_voltage = tk.BooleanVar(value=True)    # use power voltage for scaling
         self.avgvar = tk.StringVar()
-        self.avgvar.set(daq.board.default_avg)
-        self.use_power_voltage.set(1)
         self.powerlabel = ttk.Checkbutton(self, text=self.power_voltage_str(), variable=self.use_power_voltage)
 
         if len(daq.board.avg) > 1:
             self.avglabel = ttk.Label(self, text='x Averaging')
-            avgfield = tk.OptionMenu(self, self.avgvar, *(x[0] for x in daq.board.avg))
-            avgfield['bg']=os_background_color
+            avgfield = ttk.OptionMenu(self, self.avgvar,  daq.board.default_avg, *(x[0] for x in daq.board.avg))
             avgfield['width'] = 5
-
         # grid items in other_global_options
-        self.powerlabel.grid(row=5, column=0, columnspan=4)
-        if len(daq.board.avg) > 1:
-            avgfield.grid(row=6, column=0, columnspan=2, sticky='e')
-            self.avglabel.grid(row=6, column=2, columnspan=2, sticky='w')
+            avgfield.grid(row=1, column=0, sticky='e')
+            self.avglabel.grid(row=1, column=1, sticky='w')
+
+        self.powerlabel.grid(row=0, column=0, columnspan=2)
+        
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=1)
 
     def power_voltage_str(self):
         """return measured power voltage as a string
@@ -379,12 +369,22 @@ class ImageButton(ttk.Label):
     """A button consisting of an image.
     Has no border except for that provided by the image.
     """
-    def __init__(self, master, file, command=None):
-        img = tk.PhotoImage(file=file)
+    def __init__(self, master, filename, command=None):
+        img = tk.PhotoImage(file=filename)
         ttk.Label.__init__(self, master, image=img)
         self.img = img
         if command is not None:
             self.bind('<ButtonRelease-1>', command)
+
+class AutoScrollbar(ttk.Scrollbar):
+    """A scrollbar that hides automatically.
+    """
+    def set(self, low, high):
+        if float(low) <= 0 and float(high) >= 1:
+            self.grid_remove()
+        else:
+            self.grid()
+        ttk.Scrollbar.set(self, low, high)
 
 class PinChoiceMenu(tk.Menu):
     """Makes a menu for choosing pins.
@@ -410,18 +410,18 @@ class PinChoiceMenu(tk.Menu):
             analog_menu=tk.Menu(self)
             self.add_cascade(label='Analog',image=self.sineimg,menu=analog_menu,compound='left')
             for x in daq.board.analogs:
-                analog_menu.add_command(label=x[0],  command=lambdaize(self.set_pin,x[0]))
+                analog_menu.add_command(label=x[0],  command=partial(self.set_pin, x[0]))
         if daq.board.differentials:            
             differential_menu=tk.Menu(self)
             self.add_cascade(label='Differential',image=self.sineimg,menu=differential_menu,compound='left')
             for x in daq.board.differentials:
-                differential_menu.add_command(label=x[0],  command=lambdaize(self.set_pin,x[0]))
+                differential_menu.add_command(label=x[0],  command=partial(self.set_pin, x[0]))
         if daq.board.digitals:            
             digital_menu=tk.Menu(self)
             self.add_cascade(label='Digital',image=self.squareimg,menu=digital_menu, compound='left')
             for x in daq.board.digitals:
                 if not daq.board.is_analog(x[0]):
-                    digital_menu.add_command(label=x[0],  command=lambdaize(self.set_pin,x[0]))
+                    digital_menu.add_command(label=x[0],  command=partial(self.set_pin, x[0]))
         if daq.board.frequencies:
             self.f_menu=tk.Menu(self,postcommand=self.build_frequency_menu)
             self.add_cascade(label='Frequency',image=self.squareimg,menu=self.f_menu, compound='left')
@@ -444,7 +444,7 @@ class PinChoiceMenu(tk.Menu):
         """Build a new frequency menu, greying out any unavailable frequency pins.
         """
         # clear out the existing menu
-        self.f_menu.delete(0,self.f_menu.index(tk.END))
+        self.f_menu.delete(0, 'end')
 
         # figure out which pins are on OTHER channels
         pinnames_in_use = set(ch.pinvar.get() for ch in master_frame.channel_list())
@@ -458,7 +458,7 @@ class PinChoiceMenu(tk.Menu):
                 self.f_menu.add_separator()
             state = 'disabled' if freq_set & pinnames_in_use else 'normal'
             for x in freq_group:
-                self.f_menu.add_command(label=x[0],  command=lambdaize(self.set_pin,x[0]),
+                self.f_menu.add_command(label=x[0],  command=partial(self.set_pin, x[0]),
                         state=state)
             separator=True
     
@@ -479,25 +479,23 @@ class ChannelWidget(ttk.Frame):
         ChannelWidget.chnums.add(self.num)
         
         # name of channel
-        self.namevar = nv = tk.StringVar()
-        nv.set('ch{0}'.format(self.num))
+        self.namevar = nv = tk.StringVar(value='ch{0}'.format(self.num))
         namefield = ttk.Entry(self, textvariable=nv, width=16, font=('TkTextFont', 0, 'bold'))
         namefield.focus()
         
         # which probe to use
-        self.pinvar = tk.StringVar()
-        pinchoice = tk.Menubutton(self, textvariable=self.pinvar, indicatoron=True)
+        self.pinvar = tk.StringVar(value=daq.board.analogs[0][0])
+        pinchoice = ttk.Menubutton(self, textvariable=self.pinvar)
         pintype_menu = PinChoiceMenu(pinchoice,self.pinvar)
         pinchoice.configure(menu=pintype_menu)
         pinchoice['compound'] = 'left'
-        pinchoice['bg']=os_background_color
+        #pinchoice['bg']=os_background_color
         
         # set default value for probe
-        self.pinvar.set(daq.board.analogs[0][0]) 
         pinchoice['image'] = PinChoiceMenu.sineimg        
         
         # options button
-        optbutton = ImageButton(self, file=os.path.join(maindir, 'daq/icons/options.gif'), command=self.show_options)
+        optbutton = ImageButton(self, filename=os.path.join(maindir, 'daq/icons/options.gif'), command=self.show_options)
         
         # canvas for sparkline
         self.sparkline_canvas = tk.Canvas(self, height=50, width=200, highlightthickness=0, 
@@ -505,12 +503,12 @@ class ChannelWidget(ttk.Frame):
         self.sparkline = self.sparkline_canvas.create_line(0, 0, 0, 0)
 
 #        self.display_font = tkfont.Font(family="Courier",size=11)
-        self.display_font= tkfont.Font(family="TkTextFont")
+        self.display_font= tkfont.Font(family='TkTextFont')
         
-        width_in_chars = int(0.999 + self.display_font.measure("RMS:")/self.display_font.measure('n'))
+        width_in_chars = int(0.999 + self.display_font.measure('RMS:')/self.display_font.measure('n'))
         self.average_label = ttk.Label(self,anchor='w',width=width_in_chars,font=self.display_font)
 
-        width_in_chars=int(0.999 + self.display_font.measure("-123.45e-03")/self.display_font.measure('n'))
+        width_in_chars=int(0.999 + self.display_font.measure('-123.45e-03')/self.display_font.measure('n'))
         self.display_value = ttk.Label(self,width=width_in_chars, anchor='e', font=self.display_font,justify='right')
         
         # 0th, 1st, and 2nd moment for computing mean and rms
@@ -594,15 +592,15 @@ class ChannelWidget(ttk.Frame):
         mean=self.x1/self.x0
         ms=max(0,self.x2/self.x0-mean**2)
         rms=sqrt(ms)
-        if  self.descriptor.interpretation.is_analog and  master_frame.other_global_options.use_power_voltage.get():
+        if  self.descriptor.interpretation.is_analog and master_frame.other_global_options.use_power_voltage.get():
             last_value = self.descriptor.volts(last_value,daq.board.power_voltage)
             mean = self.descriptor.volts(mean,daq.board.power_voltage)
             rms = self.descriptor.volts(rms,daq.board.power_voltage)
-            self.display_value['text']= "\n".join([engineering_format(x,7,4) for x in (last_value,mean,rms)])
+            self.display_value['text']= '\n'.join([engineering_format(x,7,4) for x in (last_value,mean,rms)])
         elif self.descriptor.interpretation.is_frequency:
-            self.display_value['text']= "\n".join([engineering_format(x,7,4) for x in (last_value,mean,rms)])
+            self.display_value['text']= '\n'.join([engineering_format(x,7,4) for x in (last_value,mean,rms)])
         else:
-            self.display_value['text']= "{0:7.0f}\n{1:7.4f}\n{2:7.4f}".format(last_value,mean,rms)
+            self.display_value['text']= '{0:7.0f}\n{1:7.4f}\n{2:7.4f}'.format(last_value,mean,rms)
 
         if len(visible_data)<2:
             return      # too short make a line
@@ -653,7 +651,8 @@ class ChannelWidget(ttk.Frame):
 
 class PortSelect(object):
     def __init__(self, win, cb):
-        win.title('Select a port')
+        self.win = win
+        win.title('PteroDAQ - Select a Device')
         self.cb = cb
         self.port_frame = port_frame = ttk.Frame(win)
         self.pl = ttk.Treeview(port_frame, show='tree', selectmode='browse', height=8)
@@ -666,7 +665,7 @@ class PortSelect(object):
         treeview_selections=self.pl.selection()
         if not treeview_selections:
             # nothing selected (probably no board plugged in)
-            tkm.showerror("No board", "No PteroDAQ board selected---plug one in and try again")
+            tkm.showerror('No board', 'No PteroDAQ board selected---plug one in and try again')
             return
         portname, port = self.ps[int(treeview_selections[0])]
         self.pl.after_cancel(self.aft)
@@ -676,6 +675,7 @@ class PortSelect(object):
         self.conn_label = ttk.Label(self.port_frame, padding=10,
             text='Connecting to\n{0}\n{1}'.format(tostr(portname), tostr(port)))
         self.conn_label.pack()
+        self.win.title('PteroDAQ - Connecting')
         self.aft = root.after(100, self.checkstart)
     def updateports(self):
         ps = self.ps = ports()
@@ -768,12 +768,13 @@ class MasterFrame(ttk.Frame):
         self.commandbar = CommandBar(self)	# defined last to ensure access to other parts of MasterFrame
 
         ##grid items in global_options
-        self.triggers.grid(row=0,column=0,sticky="new")
-        ttk.Separator(global_options, orient="horizontal").grid(row=1,column=0,sticky="ew")
-        self.other_global_options.grid(row=2,column=0,sticky="sew")
+        self.triggers.grid(row=0,column=0,sticky='new')
+        ttk.Separator(global_options, orient='horizontal').grid(row=1,column=0,sticky='ew')
+        self.other_global_options.grid(row=2,column=0,sticky='sew')
+        global_options.columnconfigure(0, weight=1)
 
         ## define items in notes frame
-        self.errorlabel = ttk.Label(notes, text='Error: triggering too fast', foreground="red")
+        self.errorlabel = ttk.Label(notes, text='Error: triggering too fast', foreground='red')
         noteslabel = ttk.Label(notes, text='Notes', font=('TkTextFont', 0, 'bold'))
         self.notesbox = tk.Text(notes, height=7, width=60, wrap='word', highlightthickness=0, font='TkTextFont')
 
@@ -791,7 +792,7 @@ class MasterFrame(ttk.Frame):
         # inner_channel_frame must be after channel_canvas to layer on top
         self.inner_channel_window=self.channel_canvas.create_window(0, 0, anchor='nw', window=self.inner_channel_frame)
         self.channel_canvas.bind('<Configure>', self.inner_channel_change_width)
-        channel_scrollbar = ttk.Scrollbar(channel_frame, orient='vertical', command=self.channel_canvas.yview)
+        channel_scrollbar = AutoScrollbar(channel_frame, orient='vertical', command=self.channel_canvas.yview)
         self.channel_canvas['yscrollcommand'] = channel_scrollbar.set
 
         ## grid items for channel_frame
@@ -803,9 +804,9 @@ class MasterFrame(ttk.Frame):
         ## grid items for master frame 
         self.commandbar.grid(row=0, column=0, columnspan=3, sticky='ew', padx=2, pady=2)
         ttk.Separator(self, orient='horizontal').grid(row=1, column=0, columnspan=3, sticky='ew')
-        global_options.grid(row=2, column=0, sticky='w')
+        global_options.grid(row=2, column=0, sticky='ew')
         ttk.Separator(self, orient='vertical').grid(row=2, column=1, sticky='nsw')
-        notes.grid(row=2, column=2, sticky="nsew")
+        notes.grid(row=2, column=2, sticky='nsew')
         ttk.Separator(self, orient='horizontal').grid(row=3, column=0, columnspan=3, sticky='ew')
         channel_frame.grid(row=4, column=0, columnspan=3, sticky='nsew')
 
@@ -813,7 +814,7 @@ class MasterFrame(ttk.Frame):
         self.columnconfigure(0,weight=1)    # let commandbar and channel_frame stretch horizontally
         self.columnconfigure(2,weight=100)  # let notes stretch horizontally
 
-        self.grid(row=0, column=0, sticky="nsew")
+        self.grid(row=0, column=0, sticky='nsew')
         root.columnconfigure(0,weight=1)
         root.rowconfigure(0,weight=1)
 
@@ -836,8 +837,8 @@ class MasterFrame(ttk.Frame):
         """
         if daq.num_saved < len(daq.data()):
             save_before_quit=tkm.askyesnocancel(
-                title="Unsaved readings",
-                message="{0} unsaved readings\nSave before quitting?".format(len(daq.data())),
+                title='Unsaved readings',
+                message='{0} unsaved readings\nSave before quitting?'.format(len(daq.data())),
                 parent=self)
             if save_before_quit is None:
                 # cancel returns None
@@ -883,7 +884,7 @@ class MasterFrame(ttk.Frame):
                 + int(daq.data()[freeze_count-1][0]/ daq.conf[0].period  +1.1)
 #            print("DEBUG: implied_packets=",implied_packets, "freeze_count=", freeze_count, file=sys.stderr)
             if implied_packets>freeze_count:
-                self.errorlabel['text'] = "Warning: {0} samples dropped".format(implied_packets - freeze_count)
+                self.errorlabel['text'] = 'Warning: {0} samples dropped'.format(implied_packets - freeze_count)
                 self.errorlabel.grid(row=0, column=0)
             else:
                 self.errorlabel.grid_forget()
@@ -913,7 +914,8 @@ def main(e=None):
         os_background_color = root['bg']
     
     master_frame = MasterFrame(root)
-    root.title('PteroDAQ')
+    root.title('PteroDAQ - Paused')
+    root.geometry('650x450')
     
     root.update_idletasks()
     
@@ -924,7 +926,7 @@ def main(e=None):
     root.protocol('WM_DELETE_WINDOW', master_frame.on_closing)
     
     #handle quits caused by keyboard shortcut
-    root.createcommand('exit',master_frame.on_closing)
+    root.createcommand('exit', master_frame.on_closing)
     
     # Run update_data after 100 ms
     root.after(100, master_frame.update_data)
@@ -948,6 +950,8 @@ root['menu'] = menubar
 appicon = tk.PhotoImage(file=os.path.join(maindir, 'extras/appicons/pterodaq512.gif'))
 root.tk.call('wm','iconphoto',root._w,appicon)
 
-ps = PortSelect(root, lambda port: daq.connect(port,startmain))
+root.geometry('300x300')
+
+ps = PortSelect(root, partial(daq.connect, call_when_done=startmain))
 
 root.mainloop()

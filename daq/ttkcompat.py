@@ -36,6 +36,20 @@ class Label(Widget):
     def __init__(self, master=None, **kw):
         Widget.__init__(self, master, 'ttk::label', kw)
 
+class Menubutton(Widget):
+    def __init__(self, master=None, **kw):
+        Widget.__init__(self, master, 'ttk::menubutton', kw)
+
+class OptionMenu(Widget, Menubutton):
+    def __init__(self, master, variable, default, *values, **kwargs):
+        Menubutton.__init__(self, master, textvariable=variable, **kwargs)
+        self['menu'] = m = Tkinter.Menu(self, tearoff=False)
+        self._variable = variable
+        for val in values:
+            m.add_radiobutton(label=val, command=Tkinter._setit(self._variable, val, None))
+        if default is not None:
+            variable.set(default)
+
 class Radiobutton(Widget):
     def __init__(self, master=None, **kw):
         Widget.__init__(self, master, 'ttk::radiobutton', kw)
@@ -63,4 +77,3 @@ class Treeview(Widget):
         return self.tk.call(self._w, 'selection')
     def selection_set(self, items):
         self.tk.call(self._w, 'selection', 'set', items)
-
