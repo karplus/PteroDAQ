@@ -204,6 +204,7 @@ class CommandBar(ttk.Frame):
         as a suggestion.
         returns either filename saved into, or None (if save cancelled)
         """
+#        print("DEBUG: saving", len(daq.data()), "reads, last=", daq.data()[-1],file=sys.stderr)
         self.pauserec()
         config = self.makeconf()
         if config is None:
@@ -591,12 +592,8 @@ class ChannelWidget(ttk.Frame):
         self.x2 += sum(x[chan_num]**2 for x in daq.data()[self.x0:freeze_count])
         self.x0 = freeze_count
         mean=self.x1/self.x0
-        ms=self.x2/self.x0-mean**2
-        try:
-            rms=sqrt(ms)
-        except ValueError:
-            print("BUG: Sum of squares so large that rounding error results in negative mean-square:\n\tx0=",self.x0,"x1=",self.x1,"x2=",self.x2, "mean-square=",ms, file=sys.stderr)
-            rms = -1
+        ms=max(0,self.x2/self.x0-mean**2)
+        rms=sqrt(ms)
         if  self.descriptor.interpretation.is_analog and  master_frame.other_global_options.use_power_voltage.get():
             last_value = self.descriptor.volts(last_value,daq.board.power_voltage)
             mean = self.descriptor.volts(mean,daq.board.power_voltage)
@@ -621,7 +618,7 @@ class ChannelWidget(ttk.Frame):
                     visible_data[n] = (height-1)*(1.- d/65536.)
         elif self.descriptor.interpretation.is_frequency:
             for n,d in enumerate(visible_data):
-                visible_data[n] = (height-1)*(1- max(0, log(1+d)/15.))
+                visible_data[n] = (height-1)*(1- max(0, log(1+d)/16.))
         else:
             for n,d in enumerate(visible_data):
                 visible_data[n] = (height-1)*(1- d)

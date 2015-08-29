@@ -133,7 +133,9 @@ void trigger_handler(void) {
              queue_push1(pio_read(conf.channelchoices[ind]));
 	     break;
 	 case 3:	//frequency
-             queue_push32(freq_read(conf.channelchoices[ind]));
+             {   uint32_t freq=freq_read(conf.channelchoices[ind]);
+		 queue_push32(freq);
+	     }
 	     break;
         }
     }

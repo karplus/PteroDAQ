@@ -500,6 +500,7 @@ class Teensy3_1(Board):
     PTB=32
     PTC=64
     PTD=96
+    PTE=128
     digitals = (
         ('D0',  PTB+16),        #PTB16
         ('D1',  PTB+17),        #PTB17
@@ -522,6 +523,11 @@ class Teensy3_1(Board):
         ('A10-A11', DIFF+0),
         ('A12-A13', DIFF+3))
     eint = digitals
+    
+    def make_frequencies(digitals,dma_ports):
+    	return [ [("f({0})".format(d[0]),d[1]) for d in digitals if (d[1] & ~0x1f) == port] for port in dma_ports]
+    frequencies=make_frequencies(digitals,{PTC,PTD,PTA,PTB,PTE})
+
     intsense = (
         ('rises', 1),
         ('falls',  2),

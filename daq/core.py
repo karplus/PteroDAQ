@@ -54,8 +54,8 @@ firmware_version = b'v0.2' # code used in firmware to identify protocol version
 #	8 channels have accumulated (plus any leftovers at the end).
 #
 #	Frequency channels are sent as 4 bytes each, low-order first), 
-#		with count of number of rising edges observe since previous sample.
-#       Analog channels are sent ad 2 bytes each, low-order first).
+#		with count of number of rising edges observed since previous sample.
+#       Analog channels are sent as 2 bytes each, low-order first).
 #       Digital channels are sent packed 8-channels per byte
 #       	with ith digital channel in (1<<(i-1))
 #
