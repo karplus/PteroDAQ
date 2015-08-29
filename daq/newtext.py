@@ -1,4 +1,6 @@
+import sys
 from functools import partial
+
 
 def ec(e, *args):
     return root.tk.call(e.widget, *args)
@@ -9,9 +11,9 @@ def create_newtext(r):
     global root
     root = r
     
-    root.tk.globalsetvar('PY_TMP_VAR', 1)
-    rc('::tk::EventMotifBindings', 'PY_TMP_VAR', '', '')
-    root.tk.globalunsetvar('PY_TMP_VAR')
+#    root.tk.globalsetvar('PY_TMP_VAR', 1)
+#    rc('::tk::EventMotifBindings', 'PY_TMP_VAR', '', '')
+#    root.tk.globalunsetvar('PY_TMP_VAR')
     if rc('tk', 'windowingsystem') == 'x11':
         rc('event', 'add', '<<SelectAll>>', '<Control-a>')
     
@@ -77,6 +79,8 @@ def key(e):
         e.char = '\n'
     if not e.char:
         return
+    if e.char=='\n':
+        ec(e, 'edit', 'separator')
     ec(e, 'tag', 'remove', 'sel', '0.0', 'end')
     ec(e, 'delete', 'insert', 'anchor', 'anchor', 'insert')
     ec(e, 'insert', 'insert', e.char)
@@ -97,12 +101,14 @@ def sarrow(dir, size, e):
 def delete(off, e):
     ec(e, 'tag', 'remove', 'sel', '0.0', 'end')
     if ec(e, 'compare', 'anchor', '!=', 'insert'):
+        ec(e, 'edit', 'separator')
         ec(e, 'delete', 'insert', 'anchor', 'anchor', 'insert')
     elif not off or ec(e, 'compare', 'insert', '!=', '0.0'):
-            ec(e, 'delete', 'insert - {0} chars'.format(off))
+        ec(e, 'delete', 'insert - {0} chars'.format(off))
     ec(e, 'see', 'insert')
 def cut(e):
     if ec(e, 'tag', 'ranges', 'sel'):
+        ec(e, 'edit', 'separator')
         t = ec(e, 'get', 'sel.first', 'sel.last')
         ec(e, 'delete', 'sel.first', 'sel.last')
         ec(e, 'tag', 'remove', 'sel', '0.0', 'end')
@@ -116,6 +122,7 @@ def copy(e):
 def paste(e):
     t = rc('clipboard', 'get')
     if t:
+        ec(e, 'edit', 'separator')
         ec(e, 'tag', 'remove', 'sel', '0.0', 'end')
         ec(e, 'delete', 'insert', 'anchor', 'anchor', 'insert')
         ec(e, 'insert', 'insert', t)
@@ -135,7 +142,7 @@ def selall(e):
     ec(e, 'mark', 'set', 'insert', '0.0')
     ec(e, 'mark', 'set', 'anchor', 'end')
 def scroll(e):
-    if e.type == 38: # 'MouseWheel'
+    if int(e.type) == 38: # 'MouseWheel'
         delta = -int(e.delta)
     elif e.num == 4:
         delta = -1

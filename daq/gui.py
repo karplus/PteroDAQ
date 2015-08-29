@@ -25,7 +25,7 @@ import core
 from getports import ports
 from comm import tostr
 from newtext import create_newtext
-
+from tkversionpatch import tk_patch_if_needed
 
 # global variables:
 #       root - the root of the Tkinter windowing
@@ -815,10 +815,16 @@ class MasterFrame(ttk.Frame):
         ## define items in notes frame
         self.errorlabel = ttk.Label(notes, text='Error: triggering too fast', foreground='red')
         noteslabel = ttk.Label(notes, text='Notes', font=('TkTextFont', 0, 'bold'))
-        self.notesbox = tk.Text(notes, height=7, width=60, wrap='word', highlightthickness=0, font='TkTextFont')
+        self.notesbox = tk.Text(notes, height=7, width=60, wrap='word', highlightthickness=0, font='TkTextFont', undo=True)
         notescroll = AutoScrollbar(notes, orient='vertical', command=self.notesbox.yview)
         self.notesbox['yscrollcommand'] = notescroll.set
         self.notesbox.bindtags(tuple('newtext' if x == 'Text' else x for x in self.notesbox.bindtags()))
+#        print('DEBUG: notesbox.bindtags=', self.notesbox.bindtags(), file=sys.stderr)
+#        print('DEBUG: notesbox.bind=', self.notesbox.bind(), file=sys.stderr)
+#        print('DEBUG: root.bind_class("newtext")=', root.bind_class('newtext'), file=sys.stderr)
+#        print('DEBUG: root.bind_class("newtext","<<SelectAll>>")=', root.bind_class('newtext','<<SelectAll>>'), file=sys.stderr)
+#        print('DEBUG: root.event_info("<<SelectAll>>")=', root.event_info('<<SelectAll>>'), file=sys.stderr)
+#        print('DEBUG: root.event_info("<<PrevChar>>")=', root.event_info('<<PrevChar>>'), file=sys.stderr)
         self.notesbox.mark_set('anchor', 'insert')
 
         ## grid items in notes frame
@@ -875,13 +881,19 @@ class MasterFrame(ttk.Frame):
         self.update_channels()
 
     def scrollcan(self, event):
-        if event.type == 38: # 'MouseWheel'
+        """Scroll the channel_canvas, based on an event from either a MouseWheel or Trackpad
+        (Note: scrollbar handled automatically, not here.)
+        """
+        # delta is the movement to make in yview_scroll
+#        print('DEBUG: event.type=',repr(event.type),'event.delta=',event.delta, file=sys.stderr)
+        if int(event.type) == 38: # 'MouseWheel'
             delta = -int(event.delta)
-        elif event.num == 4:
+        elif event.num == 4: # button 4 on X11
             delta = -1
-        else:
+        else:			# button 5 on X11
             delta = 1
         if delta >= 120 or delta <= -120:
+            # On Windows, MouseWheel deltas are 120 times larger than on Mac
             delta /= 120
         self.channel_canvas.yview_scroll(int(delta), 'units')
 
@@ -980,8 +992,13 @@ def main(e=None):
     root.after(100, master_frame.update_data)
 
 def create_root():
+    """Creates the top-level root object for Tkinter
+    and initializes various properties, 
+    mainly dealing with top-level menus and icons
+    """
     root = tk.Tk()
     
+    tk_patch_if_needed(root)
     create_newtext(root)
     
     # On Macs, allow the dock icon to deiconify.
