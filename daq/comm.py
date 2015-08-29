@@ -117,7 +117,7 @@ class CommPort(object):
         together with data d (a byte string)
         and return the data from the response (a byte string).
         """
-        mbase = b'!' + tobytes(c) + asbyte(len(d)) + d
+        mbase = b'!' + c + asbyte(len(d)) + d
         msg = mbase + asbyte(-bytesum(mbase) % 256)
         while True:
 #            print("DEBUG: sending message", msg[:2],

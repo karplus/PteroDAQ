@@ -10,7 +10,6 @@ try:
     import tkinter as tk
     from tkinter import messagebox as tkm
     from tkinter import filedialog as tkf
-    from tkinter import simpledialog as tks
     from tkinter import ttk
     from tkinter import font as tkfont
 except ImportError:
@@ -18,7 +17,6 @@ except ImportError:
     import tkMessageBox as tkm
     import tkFileDialog as tkf
     import tkFont as tkfont
-    import tkSimpleDialog as tks
     try:
         import ttk
     except ImportError:
@@ -26,19 +24,18 @@ except ImportError:
 import core
 from getports import ports
 from comm import tostr
+from newtext import create_newtext
 
 
 # global variables:
-#       root    the root of the Tkinter windowing
-#       daq     the DataAcquisition object from core
-#       os_background_color     background color for window
-#       master_frame    the Frame that holds all the GUI interface
+#       root - the root of the Tkinter windowing
+#       daq - the DataAcquisition object from core
+#       maindir - the main directory containing the daq folder
+#       os_background_color - background color for frames
+#       master_frame - the Frame that holds all the GUI interface
 #
-# top-level globals that should be local
-#       appicon the PteroDAQ icon
-#       windowingsystem (the type of windowing system, e.g. 'aqua')
-#       menubar the menu for root
-#       ps      the selected port, returned by PortSelect
+# globals that could be local:
+#       ps      the PortSelect object
 
 
 
@@ -168,7 +165,7 @@ class CommandBar(ttk.Frame):
             return
         ch = ChannelWidget(master_frame.inner_channel_frame)
         ch.pack(expand=True, fill='x')
-        ch.bind('<B1-Motion>', change_height)
+
         ch.update_idletasks()
         master_frame.update_channels()
         master_frame.channel_canvas.update_idletasks()
@@ -505,7 +502,7 @@ class ChannelWidget(ttk.Frame):
         # canvas for sparkline
         self.sparkline_canvas = tk.Canvas(self, height=50, width=200, highlightthickness=0, 
                         bg='white')
-        self.sparkline = self.sparkline_canvas.create_line(0, 0, 0, 0)
+        self.sparkline = self.sparkline_canvas.create_line(-2, -2, -2, -2) # out of sight, unlike (0, 0)
 
 #        self.display_font = tkfont.Font(family="Courier",size=11)
         self.display_font= tkfont.Font(family='TkTextFont')
@@ -535,6 +532,13 @@ class ChannelWidget(ttk.Frame):
         self.rowconfigure(0, weight=1)
         ttk.Separator(self, orient='horizontal').grid(row=1, column=0, columnspan=6,
                          sticky='ew', padx=2, pady=5)
+        
+        # allow drag-to-resize
+        self.bind('<B1-Motion>', self.change_height)
+        
+        # allow scrolling
+        for w in [self] + self.winfo_children():
+            w.bindtags(('channelscroll',) + w.bindtags())
 
     def remove(self, e=None):
         if not master_frame.commandbar.ask_clear_reads():
@@ -561,6 +565,14 @@ class ChannelWidget(ttk.Frame):
                     )
 #        print("DEBUG: pin_name=", pin_name, "gain=", daq.board.gain_from_name[pin_name], file=sys.stderr)
         return self.descriptor
+    
+    def change_height(self, e):
+        """Change the height of a ChannelWidget by an event
+        (bound, for example, to <B1-Motion>)
+        """
+        self.sparkline_canvas['height'] = e.y
+        self.update_idletasks()
+        master_frame.update_channels()
     
     def make_sparkline(self, chan_num, freeze_count):
         """Make a sparkline for data up to time point freeze_count
@@ -630,17 +642,42 @@ class ChannelWidget(ttk.Frame):
              *(chain.from_iterable(enumerate(visible_data,width-len(visible_data)))))
     
     def clear(self):
-        self.sparkline_canvas.coords(self.sparkline, 0, 0, 0, 0)
+        self.sparkline_canvas.coords(self.sparkline, -2, -2, -2, -2)
         self.x0=0
         self.x1=0
         self.x2=0
         self.display_value['text']=''
     def show_options(self, e):
         self.menu.post(e.x_root, e.y_root)
+    def _adj_downsample(self, dv, win, e=None):
+        try:
+            val = dv.get()
+        except ValueError:
+            tkm.showwarning('Illegal Value', 'Not an integer.\nPlease try again')
+            return
+        if val < 1:
+            tkm.showwarning('Too Small', 'The allowed minimum value is 1.\nPlease try again')
+            return
+        self.downsamp = val
+        win.destroy()
     def req_downsample(self, e=None):
-        res = tks.askinteger('Downsampling', 'Downsample channel {0} by'.format(self.namevar.get()), initialvalue=self.downsamp, minvalue=1)
-        if res is not None:
-            self.downsamp = res
+        win = tk.Toplevel(root)
+        f = ttk.Frame(win)
+        win.title('Downsampling')
+        dv = tk.IntVar(value=self.downsamp)
+        adj = partial(self._adj_downsample, dv, win)
+        lbl = ttk.Label(f, text='Downsample channel {0} by'.format(self.namevar.get()))
+        ent = ttk.Entry(f, textvariable=dv)
+        ok = ttk.Button(f, text='OK', command=adj, default='active')
+        cancel = ttk.Button(f, text='Cancel', command=win.destroy)
+        ent.bind('<Return>', adj)
+        f.grid(padx=10, pady=10)
+        lbl.grid(row=0, column=0, columnspan=2)
+        ent.grid(row=1, column=0, columnspan=2)
+        ok.grid(row=2, column=0)
+        cancel.grid(row=2, column=1)
+        win.columnconfigure(0, weight=1)
+        win.rowconfigure(0, weight=1)
     def move_up(self, e=None):
         channels = master_frame.channel_list()
         ind = channels.index(self)
@@ -663,7 +700,7 @@ class PortSelect(object):
         self.pl = ttk.Treeview(port_frame, show='tree', selectmode='browse')
         self.pl.bind('<Return>', self.useport)
         self.updateports()
-        self.go_btn = ttk.Button(port_frame, text='Go', command=self.useport)
+        self.go_btn = ttk.Button(port_frame, text='Go', command=self.useport, default='active')
         self.pl.grid(row=0, column=0, sticky='news')
         self.go_btn.grid(row=1,column=0, sticky='s')
         port_frame.columnconfigure(0,weight=1)
@@ -742,13 +779,6 @@ def startmain(fail=None):
 
 startmain.go = False
 
-def change_height(event):
-    """Change the height of a ChannelWidget by an event
-    (bound, for example, to <B1-Motion>)
-    """
-    event.widget.sparkline_canvas['height'] = event.y
-    event.widget.update_idletasks()
-    master_frame.update_channels()
 
 class MasterFrame(ttk.Frame):
     """Master window that contains all the input and output widgets.
@@ -786,10 +816,15 @@ class MasterFrame(ttk.Frame):
         self.errorlabel = ttk.Label(notes, text='Error: triggering too fast', foreground='red')
         noteslabel = ttk.Label(notes, text='Notes', font=('TkTextFont', 0, 'bold'))
         self.notesbox = tk.Text(notes, height=7, width=60, wrap='word', highlightthickness=0, font='TkTextFont')
+        notescroll = AutoScrollbar(notes, orient='vertical', command=self.notesbox.yview)
+        self.notesbox['yscrollcommand'] = notescroll.set
+        self.notesbox.bindtags(tuple('newtext' if x == 'Text' else x for x in self.notesbox.bindtags()))
+        self.notesbox.mark_set('anchor', 'insert')
 
         ## grid items in notes frame
         noteslabel.grid(row=1, column=0)
         self.notesbox.grid(row=2, column=0, sticky='nsew')
+        notescroll.grid(row=2, column=1, sticky='nse')
         notes.columnconfigure(0,weight=1)
         notes.rowconfigure(2,weight=1)
 
@@ -826,7 +861,11 @@ class MasterFrame(ttk.Frame):
         self.grid(row=0, column=0, sticky='nsew')
         root.columnconfigure(0,weight=1)
         root.rowconfigure(0,weight=1)
-
+        
+        root.bind_class('channelscroll', '<MouseWheel>', self.scrollcan)
+        root.bind_class('channelscroll', '<Button-4>', self.scrollcan)
+        root.bind_class('channelscroll', '<Button-5>', self.scrollcan)
+    
     # Weird way to allow inner_channel_frame to resize to fill canvas
     def inner_channel_change_width(self,event):
         """Function to bind to '<Configure>' of a canvas to make it adjust its size
@@ -835,8 +874,13 @@ class MasterFrame(ttk.Frame):
         self.channel_canvas.itemconfig(self.inner_channel_window, width = event.width)
         self.update_channels()
 
-    def scrollcan(self,delta):
-        delta = -int(delta)
+    def scrollcan(self, event):
+        if event.type == 38: # 'MouseWheel'
+            delta = -int(event.delta)
+        elif event.num == 4:
+            delta = -1
+        else:
+            delta = 1
         if delta >= 120 or delta <= -120:
             delta /= 120
         self.channel_canvas.yview_scroll(int(delta), 'units')
@@ -907,8 +951,6 @@ class MasterFrame(ttk.Frame):
         if not force_refresh:
             root.after(100, self.update_data)
 
-
-
 def main(e=None):
     global master_frame
     global os_background_color
@@ -927,42 +969,47 @@ def main(e=None):
     root.geometry('650x450')
     
     root.update_idletasks()
-    
-    root.tk.createcommand('scrollcan', master_frame.scrollcan)
-    root.bind_all('<MouseWheel>', 'scrollcan %D')
-    
+        
     # handle quits caused by deleting the window
     root.protocol('WM_DELETE_WINDOW', master_frame.on_closing)
     
-    #handle quits caused by keyboard shortcut
+    # handle quits caused by keyboard shortcut
     root.createcommand('exit', master_frame.on_closing)
     
     # Run update_data after 100 ms
     root.after(100, master_frame.update_data)
 
-root = tk.Tk()
+def create_root():
+    root = tk.Tk()
+    
+    create_newtext(root)
+    
+    # On Macs, allow the dock icon to deiconify.
+    root.createcommand('::tk::mac::ReopenApplication', root.deiconify)
+    
+    # On Macs, set up menu bar to be minimal.
+    root.option_add('*tearOff', False)
+    windowingsystem = root.tk.call('tk', 'windowingsystem')
+    menubar = tk.Menu(root)
+    if windowingsystem == 'aqua':
+        appmenu = tk.Menu(menubar, name='apple')
+        menubar.add_cascade(menu=appmenu)
+    root['menu'] = menubar
+    
+    # On Linux and Windows, set the app's icon
+    appicon = tk.PhotoImage(file=os.path.join(maindir, 'extras/appicons/pterodaq512.gif'))
+    root.tk.call('wm', 'iconphoto', root._w, appicon)
+    
+    root.geometry('280x200')
+    root.lift()
+    root.focus_force()
+    
+    return root
+
 daq = core.DataAcquisition()
 
-# On Macs, allow the dock icon to deiconify.
-root.createcommand('::tk::mac::ReopenApplication', root.deiconify)
-
-# On Macs, set up menu bar to be minimal.
-root.option_add('*tearOff', False)
-windowingsystem = root.tk.call('tk', 'windowingsystem')
-menubar = tk.Menu(root)
-if windowingsystem == 'aqua':
-    appmenu = tk.Menu(menubar, name='apple')
-    menubar.add_cascade(menu=appmenu)
-root['menu'] = menubar
-
-# On Linux and Windows, set the app's icon
-appicon = tk.PhotoImage(file=os.path.join(maindir, 'extras/appicons/pterodaq512.gif'))
-root.tk.call('wm','iconphoto',root._w,appicon)
-
-root.geometry('280x200')
+root = create_root()
 
 ps = PortSelect(root, partial(daq.connect, call_when_done=startmain))
 
-root.lift()
-root.focus_force()
 root.mainloop()

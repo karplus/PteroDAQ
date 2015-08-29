@@ -1,10 +1,11 @@
-from __future__ import division, print_function
+from __future__ import division, print_function, unicode_literals
 
 import sys
 import struct
 from datetime import datetime
 from collections import namedtuple
 from math import sqrt
+import codecs
 try:
     from future_builtins import zip
 except ImportError:     # either before Python2.6 or one of the Python 3.*
@@ -168,15 +169,15 @@ class DataAcquisition(object):
         self.trigger_error=None
         self.data_length_before_go = len(self._data)
 #        print("DEBUG: starting with", self.data_length_before_go, "packets",file=sys.stderr)
-        self.comm.command('G')
+        self.comm.command(b'G')
     def oneread(self):
         self.trigger_error=None
         self.data_length_before_go = 0 # 'I' command doesn't reset pseudo-timer
-        self.comm.command('I')
+        self.comm.command(b'I')
     def stop(self):
-        self.comm.command('S')
+        self.comm.command(b'S')
         # redo the setup to remeasure supply voltage
-        model = self.comm.command('M')
+        model = self.comm.command(b'M')
         self.board.setup(model[2:])
     def config(self, conf):
         confsend = bytearray()
@@ -195,12 +196,12 @@ class DataAcquisition(object):
             force_flush = 0x10 if buffer_per_sec < 20 else 0
             trigger.period, (clkdiv, clkval) = self.board.timer_calc(trigger.period)
 #            print("DEBUG: clkdiv=",clkdiv, "clkval=",clkval, file=sys.stderr)
-            confsend.extend(struct.pack('<BBL', force_flush | 1, clkdiv, clkval))
+            confsend.extend(struct.pack(b'<BBL', force_flush | 1, clkdiv, clkval))
         elif isinstance(trigger, TriggerPinchange):
             sense = next(x[1] for x in self.board.intsense if x[0] == trigger.sense)
             pin = next(x[1] for x in self.board.eint if x[0] == trigger.pin)
             force_flush =0x10   # always force flush---don't know when next pin interrupt will be
-            confsend.extend(struct.pack('<BBB', force_flush | 2, sense, pin))
+            confsend.extend(struct.pack(b'<BBB', force_flush | 2, sense, pin))
         arefnum = next(x[1] for x in self.board.aref if x[0] == aref)
         confsend.append(arefnum)
         confsend.append(next(x[1] for x in self.board.avg if x[0] == avg))
@@ -210,7 +211,7 @@ class DataAcquisition(object):
             confsend.append(probe >> 8)
         self.conf = conf
 #        print('DEBUG: confsend', confsend, file=sys.stderr)
-        self.comm.command('C', bytes(confsend))
+        self.comm.command(b'C', bytes(confsend))
     
     def data(self):
         return self._data
@@ -230,9 +231,9 @@ class DataAcquisition(object):
         else:
             # configuration never done, probably because no data recorded yet
             use_conf=new_conf
-            
+        
         scale = self.board.power_voltage / 65536.
-        with open(fn, 'w') as f:
+        with codecs.open(fn, 'w', 'utf-8') as f:
             f.write('# PteroDAQ recording\n')
             f.write('# saved at {0:%Y %b %d %H:%M:%S}\n'.format(datetime.now()))
             if len(self.board.names)>1:
@@ -312,7 +313,7 @@ class DataAcquisition(object):
         handshake_tries = 0
         while True:
             try:
-                hs = self.comm.command('H')
+                hs = self.comm.command(b'H')
             except RuntimeError:
                 handshake_tries += 1
                 if handshake_tries>=3:
@@ -323,11 +324,11 @@ class DataAcquisition(object):
         if hs != b'DAQ':
             self._conncall('Handshake failed. Check if PteroDAQ firmware is installed.')
             return
-        version = self.comm.command('V')
+        version = self.comm.command(b'V')
         if version != firmware_version:
             self._conncall('Incorrect version: {0} present, {1} needed.'.format(tostr(version), tostr(firmware_version)))
             return
-        model = self.comm.command('M')
+        model = self.comm.command(b'M')
         self.board = getboardinfo(model)
         self._conncall(None)
     
@@ -350,11 +351,11 @@ class DataAcquisition(object):
             print("Warning: ignoring data packet before configuration set",file=sys.stderr)
             return
         if self.is_timed_trigger():
-            ts = struct.unpack_from('<L', rd)[0]
+            ts = struct.unpack_from(b'<L', rd)[0]
             ts *= self.conf[0].period
             pos = 4
         else:
-            ts = struct.unpack_from('<Q', rd)[0]
+            ts = struct.unpack_from(b'<Q', rd)[0]
             ts *= self.board.timestamp_res
             pos = 8
         digbuf = bytearray()
@@ -362,10 +363,10 @@ class DataAcquisition(object):
         digcount = 0
         for n, ch in enumerate(self.channels, 1):
             if ch.interpretation.is_analog:
-                results[n] = struct.unpack_from('<h' if ch.interpretation.is_signed else '<H', rd, pos)[0]
+                results[n] = struct.unpack_from(b'<h' if ch.interpretation.is_signed else b'<H', rd, pos)[0]
                 pos += 2
             elif ch.interpretation.is_frequency:
-                count = struct.unpack_from('<L', rd, pos)[0]
+                count = struct.unpack_from(b'<L', rd, pos)[0]
                 if self.is_timed_trigger():
                     results[n] = count/self.conf[0].period
                 elif self._data:
