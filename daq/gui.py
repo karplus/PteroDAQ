@@ -182,7 +182,7 @@ class CommandBar(ttk.Frame):
     def ask_clear_reads(self,event=None):
         """ask user whether to clear all reads, returns True if reads cleared"""
         if not daq.data(): return True
-        if tkm.askyesno(message='Clear all {0} unsaved readings?'.format(len(daq.data())),
+        if tkm.askyesno(message='Clear all {0} readings?'.format(len(daq.data())),
                 icon='question', 
                 parent=master_frame):
             self.clear_reads()
