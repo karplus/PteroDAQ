@@ -42,7 +42,7 @@ class Board(object):
                         # 'rises', 'falls', 'changes'
                         # Ordered for human interface.
     
-    avg = ()            # tuple of pairs
+    avg = (('1',1),)    # tuple of pairs
                         # hardware averaging options for board
                         # (name of option, numeric code)
     

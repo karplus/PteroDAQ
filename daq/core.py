@@ -204,6 +204,8 @@ class DataAcquisition(object):
             confsend.extend(struct.pack(b'<BBB', force_flush | 2, sense, pin))
         arefnum = next(x[1] for x in self.board.aref if x[0] == aref)
         confsend.append(arefnum)
+        if not avg:
+            avg = self.board.default_avg
         confsend.append(next(x[1] for x in self.board.avg if x[0] == avg))
         for ch in channels:
             probe = ch.probe
