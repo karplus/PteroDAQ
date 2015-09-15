@@ -28,9 +28,9 @@ class Board(object):
     digitals=() # tuple of pairs (digital pin name, port and position code)
     differentials=()    # tuple of either pairs ("X-Y", channel number)
                         # or 5-tuples ("g*(X-Y)", channel number, "X","Y", gain)
-    frequencies=()	# tuple of tuple of pairs, 
-    			# 	each top-level being one port
-    			#	each pair being one pin of the port ("D0", channel_number)
+    frequencies=()      # tuple of tuple of pairs, 
+                        #       each top-level being one port
+                        #       each pair being one pin of the port ("D0", channel_number)
     
     eint = ()   # tuple of pairs (interrupt pin name, interrupt number)
     
@@ -51,6 +51,10 @@ class Board(object):
     
     timestamp_res = None # resolution of timestamps in seconds
     power_voltage = None # power supply voltage, needed for analog reference info
+    
+    frequency_dead_time  = 0  # how much time, in seconds is frequency counter turned off for
+                        # on each sample.  If the count during the dead time is greater than 1, then
+                        # counts will be missed.
 
     def __init__(self):
         """Build dict self.name_from_probe, mapping probes to names.
@@ -419,7 +423,7 @@ class FreedomKL25(Board):
     eint=make_eint(digitals, ('PTA', 'PTD'))
     
     def make_frequencies(digitals,dma_ports):
-    	return [ [("f({0})".format(d[0]),d[1]) for d in digitals if d[0][:3]==port] for port in dma_ports ]
+        return [ [("f({0})".format(d[0]),d[1]) for d in digitals if d[0][:3]==port] for port in dma_ports ]
     frequencies=make_frequencies(digitals, ('PTA', 'PTD'))
 
     intsense = (
@@ -443,6 +447,7 @@ class FreedomKL25(Board):
     default_avg='4'
     
     timestamp_res = 1/24e6 # approximately 0.04 microseconds
+    frequency_dead_time = 1e-6  # about 1usec dead time in frequency counter (BUG: number not checked)
 
     def timer_calc(self, period):
         """computes counter parameters
@@ -486,18 +491,18 @@ class Teensy3_1(Board):
         ('A10',0),      # ADC0_DP0 ADC1_DP3
         ('A11',19),     # ADC0_DM0 ADC1_DM3
         ('A12',3),      # ADC0_DP3 ADC1_DP1
-#        ('A13',21),     # ADC0_DM3 ADC1_DM0	# Didn't work on ADC0 !
+#        ('A13',21),     # ADC0_DM3 ADC1_DM0    # Didn't work on ADC0 !
         ('A13',19|ADC1),     # ADC0_DM3 ADC1_DM0
         ('A14',23 ),    # DAC
-        ('A15',5|ADC1),	# D26	PTE1 ADC1_SE5a
-        ('A16',5|CHANB|ADC1),	# D27	PTC9 ADC1_SE5b
-        ('A17',4|CHANB|ADC1),	# D28	PTC8 ADC1_SE4b
-        ('A18',6|CHANB|ADC1),	# D29	PTC10 ADC1_SE6b
-        ('A19',7|CHANB|ADC1),	# D30	PTC11 ADC1_SE7b
-        ('A20',4|ADC1),	# D31	PTE0 ADC1_SE4a
+        ('A15',5|ADC1), # D26   PTE1 ADC1_SE5a
+        ('A16',5|CHANB|ADC1),   # D27   PTC9 ADC1_SE5b
+        ('A17',4|CHANB|ADC1),   # D28   PTC8 ADC1_SE4b
+        ('A18',6|CHANB|ADC1),   # D29   PTC10 ADC1_SE6b
+        ('A19',7|CHANB|ADC1),   # D30   PTC11 ADC1_SE7b
+        ('A20',4|ADC1), # D31   PTE0 ADC1_SE4a
         ('Temperature',26),  
         ('Bandgap 1V', 27),
-        ('Vref 1.2V', 18|ADC1),		# didn't work on ADC0
+        ('Vref 1.2V', 18|ADC1),         # didn't work on ADC0
 #        ('Aref',29 )
        ) 
 
@@ -522,12 +527,12 @@ class Teensy3_1(Board):
         ('D12', PTC+7 ),        #PTC7
         ('D13', PTC+5 ),        #PTC5
         # Digitals that overlap analogs not included
-        #	(analog meaning takes precendence)
+        #       (analog meaning takes precendence)
         # Consider trading off A15 and A20 to get extra frequency channel (Port E)
-        ('D24',	PTA+5),
+        ('D24', PTA+5),
         ('D25', PTB+19),
         ('D32', PTB+18),
-        ('D33', PTA+4),		# NMI if port pin not made GPIO
+        ('D33', PTA+4),         # NMI if port pin not made GPIO
     )
     DIFF=32
     differentials=(     # assuming ADC0 (swap for ADC1)
@@ -536,7 +541,7 @@ class Teensy3_1(Board):
     eint = digitals
     
     def make_frequencies(digitals,dma_ports):
-    	return [ [("f({0})".format(d[0]),d[1]) for d in digitals if (d[1] & ~0x1f) == port] for port in dma_ports]
+        return [ [("f({0})".format(d[0]),d[1]) for d in digitals if (d[1] & ~0x1f) == port] for port in dma_ports]
     frequencies=make_frequencies(digitals, (PTB,PTD,PTA,PTC,PTE))
 
     intsense = (
@@ -563,6 +568,8 @@ class Teensy3_1(Board):
     
     # PIT0&1 run off bus clock, which is half system (72MHz ,not overclocked)
     timestamp_res = 1/36e6 
+
+    frequency_dead_time = 34/72e6        #  dead time in frequency counter (about 34 cycles)
 
     def timer_calc(self, period):
         """computes counter parameters
@@ -641,7 +648,7 @@ class Teensy_LC(Board):
     eint=make_eint(digitals, (PTD,PTA,PTC))
     
     def make_frequencies(digitals,dma_ports):
-    	return [ [("f({0})".format(d[0]),d[1]) for d in digitals if (d[1] & ~0x1f) == port] for port in dma_ports]
+        return [ [("f({0})".format(d[0]),d[1]) for d in digitals if (d[1] & ~0x1f) == port] for port in dma_ports]
     frequencies=make_frequencies(digitals, (PTA,PTC,PTD))
     
     intsense = (
@@ -665,6 +672,7 @@ class Teensy_LC(Board):
     #   and set timestamp_res in setup()
     
     timestamp_res = 1/24e6 # approximately 0.04 microseconds
+    frequency_dead_time = 19/48e6  # 19 cycles of dead time from DMAMUX disable to DMAMUX enable
 
     def timer_calc(self, period):
         """computes counter parameters

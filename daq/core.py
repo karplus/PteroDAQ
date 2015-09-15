@@ -370,7 +370,13 @@ class DataAcquisition(object):
             elif ch.interpretation.is_frequency:
                 count = struct.unpack_from(b'<L', rd, pos)[0]
                 if self.is_timed_trigger():
-                    results[n] = count/self.conf[0].period
+                    freq = count/self.conf[0].period
+                    # estimate how many counts occurred in the dead time
+                    dead_counts =  freq *self.board.frequency_dead_time 
+                    if dead_counts > 1:
+                        # compensate for counts in the dead time that would have been missed
+                        freq += (dead_counts-1)/self.conf[0].period
+                    results[n] = freq
                 elif self._data:
                     results[n] = count/(ts - self._data[-1][0])
                 else:

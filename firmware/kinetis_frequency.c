@@ -419,17 +419,25 @@ uint32_t freq_read(uint8_t freq_channel)
     {    return(1<<30);
     }
     
-    // get pointer to appropriate DMA_DSR_BCR register
-    volatile uint32_t*  DMA_reg = (&DMA_DSR_BCR0) + DMA_REGISTER_STRIDE*freq_channel;
-    (&DMAMUX0_CHCFG0)[freq_channel] &= ~(DMAMUX_ENABLE);	// turn off at DMAMUX
-    __asm__ volatile( "nop" );
-    
-    uint32_t count = 0xfffff - ((*DMA_reg) & 0xfffff);
-    DMA_reg[0] = DMA_DSR_BCR_DONE;	// clear DONE flag
-    DMA_reg[0] = 0xfffff;	// set BCR 
-    (&DMAMUX0_CHCFG0)[freq_channel] |= DMAMUX_ENABLE;	// turn on at DMAMUX
+    // get pointer to appropriate DMAMUX register
+    volatile register uint8_t* DMAMUX_reg asm("r1") = (&DMAMUX0_CHCFG0)+freq_channel;
 
-    return (count);
+    // get pointer to appropriate DMA_DSR_BCR register
+    volatile register uint32_t*  DMA_reg asm("r2") = (&DMA_DSR_BCR0) + DMA_REGISTER_STRIDE*freq_channel;
+    
+    // Dead time from disable to re-enable of DMAMUX is 19 cycles
+    //	    (probably dependent on compiler options
+    
+    (*DMAMUX_reg) &= ~(DMAMUX_ENABLE);  // turn off at DMAMUX
+    __asm__ volatile( "nop" ); // here to provide delay before reading DMA_reg
+    	// One nop isn't really enough, but compiler sticks in enough
+	//    other junk to make things slow enough to avoid race condition.
+    uint32_t read_DMA = (*DMA_reg);                              
+    (*DMA_reg) = DMA_DSR_BCR_DONE;  // clear DONE flag  
+    (*DMA_reg) = 0xfffff;  // set BCR                  
+    (*DMAMUX_reg) |= DMAMUX_ENABLE; // turn on at DMAMUX
+
+    return (0xfffff - (read_DMA & 0xfffff));
 }
 
 // start the first num_channels DMA channels
@@ -442,8 +450,8 @@ void freq_start(uint8_t num_channels)
     for (i=0; i< num_channels; i++)
     {	(&DMAMUX0_CHCFG0)[i] &= ~(DMAMUX_ENABLE);	// turn off at DMAMUX
         __asm__ volatile( "nop" );	
-	DMA_reg[0] = DMA_DSR_BCR_DONE;
-        DMA_reg[0] = 0xfffff;
+	(*DMA_reg) = DMA_DSR_BCR_DONE;
+        (*DMA_reg) = 0xfffff;
 	(&DMAMUX0_CHCFG0)[i] |= DMAMUX_ENABLE;	// turn on at DMAMUX
 	DMA_reg += DMA_REGISTER_STRIDE;
     }
@@ -458,8 +466,8 @@ void freq_stop(uint8_t num_channels)
     for (i=0; i< num_channels; i++)
     {	(&DMAMUX0_CHCFG0)[i] &= ~(DMAMUX_ENABLE);	// turn off at DMAMUX
         __asm__ volatile( "nop" );	
-        DMA_reg[0] = DMA_DSR_BCR_DONE;
-        DMA_reg[0] = DMA_DSR_BCR_DONE;	// write twice as suggested in KLQRUG.pdf
+        (*DMA_reg) = DMA_DSR_BCR_DONE;
+        (*DMA_reg) = DMA_DSR_BCR_DONE;	// write twice as suggested in KLQRUG.pdf
 	DMA_reg += DMA_REGISTER_STRIDE;
     }
 }
