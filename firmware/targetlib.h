@@ -57,7 +57,7 @@ void digitalWrite(uint8_t, uint8_t);
 /////////////////////////////////////////
 #elif defined(__MK20DX256__)
 
-// Teensy 3.1
+// Teensy 3.1/3.2
 #include "core_pins.h"
 #include "kinetis.h"
 

@@ -472,7 +472,9 @@ class FreedomKL25(Board):
 
 @Board.supported(6)
 class Teensy3_1(Board):
-    names = ('Teensy 3.1',)
+    names = ('Teensy 3.1',
+             'Teensy 3.2',
+            )
     bandgap = 1
     # Note: all analog codes written assuming ADC0 and channel b
     CHANB=64
