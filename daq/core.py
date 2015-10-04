@@ -278,7 +278,14 @@ class DataAcquisition(object):
                     x2 = sum(d[chan_num+1]**2 for d in self._data)
                     mean = x1/x0
                     m2 = max(x2/x0-mean**2, 0)
-                    f.write(" DC= {0:.7g} RMS= {1:.7g}\n".format(mean, sqrt(m2)))
+                    if convvolts:
+                        ch=self.channels[chan_num]
+                        f.write(" DC= {0:.7g} RMS= {1:.7g}\n".format(
+                                  ch.volts(mean,self.board.power_voltage), 
+                                  ch.volts(sqrt(m2),self.board.power_voltage)
+                                ))
+                    else:
+                        f.write(" DC= {0:.7g} RMS= {1:.7g}\n".format(mean, sqrt(m2)))
                 else:
                     f.write('\n')
             old_time=0
