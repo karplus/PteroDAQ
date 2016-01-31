@@ -1,3 +1,4 @@
+#ifndef ARDUINO
 /* Copyright (c) 2010-2011 mbed.org, MIT License
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy of this software
@@ -97,3 +98,5 @@
 #define MAX_PACKET_SIZE_EPBULK  (MAX_PACKET_SIZE_EP2)
 #define MAX_PACKET_SIZE_EPINT   (MAX_PACKET_SIZE_EP1)
 #define MAX_PACKET_SIZE_EPISO   (MAX_PACKET_SIZE_EP3)
+
+#endif

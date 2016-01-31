@@ -1,3 +1,4 @@
+#ifndef ARDUINO
 /* Copyright (c) 2010-2011 mbed.org, MIT License
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy of this software
@@ -72,3 +73,5 @@
 #define E_DATA                  (0x00)
 #define E_FEEDBACK              (0x10)
 #define E_IMPLICIT_FEEDBACK     (0x20)
+
+#endif

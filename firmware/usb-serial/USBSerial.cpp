@@ -1,3 +1,4 @@
+#ifndef ARDUINO
 /* Copyright (c) 2010-2011 mbed.org, MIT License
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy of this software
@@ -65,3 +66,5 @@ bool USBSerial::EPBULK_OUT_callback() {
 uint8_t USBSerial::available() {
     return buf.available();
 }
+
+#endif

@@ -1,3 +1,4 @@
+#ifndef ARDUINO
 /* Copyright (c) 2010-2011 mbed.org, MIT License
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy of this software
@@ -158,4 +159,5 @@ private:
     void (*settingsChangedCallback)(int baud, int bits, int parity, int stop);
 };
 
+#endif
 #endif
