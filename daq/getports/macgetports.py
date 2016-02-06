@@ -3,7 +3,10 @@
 Do not import on other operating systems.
 
 Inspired by osxserialports by Pascal Oberndoerfer.
+Also by PySerial implementation of port finder, to get function on OS X 10.11.
 """
+
+from __future__ import print_function,division
 
 import sys
 import ctypes
@@ -58,25 +61,41 @@ def getname(dev):
     return buf.value
 
 def portiter():
-    itr = ctypes.c_void_p() # iterator of devices
-    # populate the iterator with all usb devices
-    iokit.IOServiceGetMatchingServices(kIOMasterPortDefault, iokit.IOServiceMatching(b'IOUSBDevice'), ctypes.byref(itr))
+    """generator that yields pairs (name, /dev string)  for USB serial ports
+    """
+    # look for an IOSerialBSDClient which has an ancestor 
+    #     that is an IOUSBHostInterface or IOUSBInterface
+    # and get the name from the parent of the of that
+    itr = ctypes.c_void_p() # iterator of interfaces
+    # populate the iterator with all SerialBSDClients
+    iokit.IOServiceGetMatchingServices(kIOMasterPortDefault, iokit.IOServiceMatching(b'IOSerialBSDClient'), ctypes.byref(itr))
     while True:
-        ds = iokit.IOIteratorNext(itr) # going through each item in the iterator
-        if not ds: # a null pointer means we've exhausted the iterator
+        service = iokit.IOIteratorNext(itr) # going through each item in the iterator
+        if not service: # a null pointer means we've exhausted the iterator
             break
-        itr2 = ctypes.c_void_p() # iterator within device
-        # populate the iterator with all children of device
-        iokit.IORegistryEntryCreateIterator(ds, kIOServicePlane, kIORegistryIterateRecursively, ctypes.byref(itr2))
+        # print("DEBUG: starting from ", getname(service), file=sys.stderr)
+        interface = service
         while True:
-            bs = iokit.IOIteratorNext(itr2) # going through each item in the iterator
-            if not bs: # a null pointer means we've exhausted the iterator
+            # print("DEBUG: looking for parent of ", getname(interface), file=sys.stderr)
+            parent = ctypes.c_void_p()
+            response = iokit.IORegistryEntryGetParentEntry(
+                interface,
+                b"IOService",
+                ctypes.byref(parent))
+            if response != 0:
+                # Unable to find a parent for the interface, we're done.
                 break
-            bsname = getname(bs)
-            if bsname == kIOSerialBSDServiceValue: # serial port children have this name
-                yield (getname(ds), getstring(bs, kIODialinDeviceKey)) # device name and dialin address
+            if getname(interface) in [b'IOUSBInterface', b'IOUSBHostInterface']:
+                # found  interface and parent
                 break
-            iokit.IOObjectRelease(bs)
-        iokit.IOObjectRelease(itr2)
-        iokit.IOObjectRelease(ds)
+            interface = parent
+        if response!=0:
+            continue
+        
+        # print("DEBUG: found interface", getname(service), "parent", getname(parent), file=sys.stderr)	
+        # print("DEBUG: getstring(service, kIODialinDeviceKey)=", getstring(service, kIODialinDeviceKey), file=sys.stderr)	
+
+        yield (getname(parent), getstring(service, kIODialinDeviceKey)) # device name and dialin address         
+#        iokit.IOObjectRelease(service)
+#        iokit.IOObjectRelease(interface)
     iokit.IOObjectRelease(itr)
