@@ -64,7 +64,8 @@ def portiter():
     """generator that yields pairs (name, /dev string)  for USB serial ports
     """
     # look for an IOSerialBSDClient which has an ancestor
-    #     that is an AppleUSBEHCI or AppleUSB20HubPort
+    #     that is an AppleUSBEHCI (USB2) or AppleUSB20HubPort
+    # 	or AppleUSBXHCI (USB3) or AppleUSBOHCI (USB1)
     # and get the name from the child of that
     itr = ctypes.c_void_p() # iterator of interfaces
     # populate the iterator with all SerialBSDClients
@@ -85,7 +86,7 @@ def portiter():
             if response != 0:
                 # Unable to find a parent for the child, we're done.
                 break
-            if getname(parent) in [b'AppleUSBEHCI', b'AppleUSB20HubPort']:
+            if getname(parent) in [b'AppleUSBEHCI', b'AppleUSB20HubPort' , b'AppleUSBXHCI', b'AppleUSBOHCI']:
                 # found  child and parent
                 break
             child = parent
@@ -94,6 +95,7 @@ def portiter():
 
 #        print("DEBUG: found child", getname(child), "parent", getname(parent), file=sys.stderr)	
 #        print("DEBUG: getstring(service, kIODialinDeviceKey)=", getstring(service, kIODialinDeviceKey), file=sys.stderr)	
+
 
         yield (getname(child), getstring(service, kIODialinDeviceKey)) # device name and dialin address
 #        iokit.IOObjectRelease(service)
@@ -200,4 +202,3 @@ def portiter():
 # DEBUG: looking for parent of  AppleACPIPlatformExpert
 # DEBUG: looking for parent of  iMac12,2
 # DEBUG: looking for parent of  Root
-
