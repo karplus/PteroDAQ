@@ -87,8 +87,22 @@ def portiter():
                 # Unable to find a parent for the child, we're done.
                 break
             if getname(parent) in [b'AppleUSBEHCI', b'AppleUSB20HubPort' , b'AppleUSBXHCI', b'AppleUSBOHCI']:
-                # found  child and parent
+                # found  child and parent.  The child has the name we want
                 break
+            if getname(child) in [b'IOUSBHostInterface', b'IOUSBInterface']:
+            	# the parent is the name we want, so go up two more
+                parent = ctypes.c_void_p()
+                response = iokit.IORegistryEntryGetParentEntry(
+                    child,
+                    b"IOService",
+                    ctypes.byref(parent))
+                child=parent
+                parent = ctypes.c_void_p()
+                response = iokit.IORegistryEntryGetParentEntry(
+                    child,
+                    b"IOService",
+                    ctypes.byref(parent))
+                break            
             child = parent
         if response!=0:
             continue
