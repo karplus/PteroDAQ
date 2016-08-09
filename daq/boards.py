@@ -561,7 +561,7 @@ class Teensy3_1(Board):
         ('8', 5),
         ('16', 6),
         ('32', 7))
-    default_avg='4'
+    default_avg='32'
     # Programmable Gain Amplifier settings not done yet
     # Use of ADC1 not done yet
     
@@ -668,7 +668,7 @@ class Teensy_LC(Board):
         ('8', 5),
         ('16', 6),
         ('32', 7))
-    default_avg='4'
+    default_avg='32'
     
     # TODO: Make F_CPU be returned from model command
     #   and set timestamp_res in setup()

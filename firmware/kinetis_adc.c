@@ -35,10 +35,11 @@ void adc_init(void) {
     SIM->SCGC6 |= SIM_SCGC6_ADC0_MASK; // clock gate enable
     adc_calib();
     // bus clock is 24MHz
-    // set conversion rate at bus clock/4 with short sample times
+    // set conversion rate at bus clock/4 with long sample times
     // That sets ADCK to 6MHz
     ADC0->CFG1 = 
         ADC_CFG1_MODE(3) | // sixteen-bit
+        ADC_CFG1_ADLSMP_MASK | // long sample
         ADC_CFG1_ADIV(2); // clock divide four
     ADC0->CFG2 = 0;
     ADC0->SC3 &= ~ADC_SC3_AVGE_MASK; // no hardware averaging
@@ -133,11 +134,12 @@ void adc_init(void) {
     SIM_SCGC3 |= SIM_SCGC3_ADC1; // clock gate enable for ADC1
     adc_calib();
     // bus clock is 36MHz (48MHz if overclocked)
-    // set conversion rate at bus clock/8 with short sample times
+    // set conversion rate at bus clock/8 with long sample times
     // That sets ADCK to 4.5MHz (6MHz if overclocked)
     ADC0_CFG1 = 
         ADC_CFG1_MODE(3) | // sixteen-bit
-        ADC_CFG1_ADIV(3); // clock divide eight
+        ADC_CFG1_ADLSMP | // long sample
+		ADC_CFG1_ADIV(3); // clock divide eight
     ADC0_CFG2 = 0;
     ADC0_SC3 &= ~ADC_SC3_AVGE; // no hardware averaging
 
@@ -231,11 +233,12 @@ void adc_init(void) {
     SIM_SCGC6 |= SIM_SCGC6_ADC0; // clock gate enable for ADC0
     adc_calib();
     // bus clock is 24MHz
-    // set conversion rate at bus clock/4 with short sample times
+    // set conversion rate at bus clock/4 with long sample times
     // That sets ADCK to 6MHz
     ADC0_CFG1 = 
         ADC_CFG1_MODE(3) | // sixteen-bit
-        ADC_CFG1_ADIV(2); // clock divide four
+     	ADC_CFG1_ADLSMP | // long sample
+		ADC_CFG1_ADIV(2); // clock divide four
     ADC0_CFG2 = 0;
     ADC0_SC3 &= ~ADC_SC3_AVGE; // no hardware averaging
 
