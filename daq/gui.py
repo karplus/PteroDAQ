@@ -292,7 +292,7 @@ class TriggerOptions(ttk.Frame):
                     return
                 self.change_running = True
                 self.hzvar.set(engineering_format(1/s,decimals=5))
-            except ValueError:
+            except (ValueError,tk._tkinter.TclError):
                 pass
         else:
             try:
@@ -301,7 +301,7 @@ class TriggerOptions(ttk.Frame):
                     return
                 self.change_running = True
                 self.secvar.set(engineering_format(1/h,decimals=6))
-            except ValueError:
+            except (ValueError,tk._tkinter.TclError):
                 pass
     
     def trigger_configuration(self):
