@@ -256,7 +256,7 @@ class TriggerOptions(ttk.Frame):
         pintrigger = ttk.Radiobutton(self, text='Pin Change', variable=self.triggertype, value=1)
         seclabel = ttk.Label(self, text='sec')
         hzlabel = ttk.Label(self, text='Hz')
-        secfield = ttk.Entry(self, textvariable=self.secvar, width=11)
+        secfield = ttk.Entry(self, textvariable=self.secvar, width=12)
         hzfield = ttk.Entry(self, textvariable=self.hzvar, width=11)
         pinfield = ttk.Combobox(self, textvariable=self.pinvar, values=[x[0] for x in daq.board.eint])
         edgefield = ttk.Combobox(self, textvariable=self.edgevar, values=[x[0] for x in daq.board.intsense])
