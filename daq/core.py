@@ -234,33 +234,35 @@ class DataAcquisition(object):
             # configuration never done, probably because no data recorded yet
             use_conf=new_conf
         
+        eol = '\r\n' if sys.platform=='win32' else '\n'
+        
         scale = self.board.power_voltage / 65536.
         with codecs.open(fn, 'w', 'utf-8') as f:
-            f.write('# PteroDAQ recording\n')
-            f.write('# saved at {0:%Y %b %d %H:%M:%S}\n'.format(datetime.now()))
+            f.write('# PteroDAQ recording{}'.format(eol))
+            f.write('# saved at {0:%Y %b %d %H:%M:%S}{1}'.format(datetime.now(),eol))
             if len(self.board.names)>1:
-                f.write('# board is one of {0}\n'.format( ", ".join(self.board.names)))
+                f.write('# board is one of {0}{1}'.format( ", ".join(self.board.names),eol))
             else:
-                f.write('# board is {0}\n'.format(self.board.names[0]))
+                f.write('# board is {0}{1}'.format(self.board.names[0],eol))
             if isinstance(use_conf[0], TriggerTimed):
-                f.write('# Recording every {0} sec ({1} Hz)\n'.format(use_conf[0].period, 1./use_conf[0].period))
+                f.write('# Recording every {0} sec ({1} Hz){2}'.format(use_conf[0].period, 1./use_conf[0].period,eol))
             elif isinstance(use_conf[0], TriggerPinchange):
-                f.write('# Recording when {0} {1}\n'.format(use_conf[0].pin, use_conf[0].sense))
-            f.write('# Analog reference is {0}\n'.format(use_conf[1]))
+                f.write('# Recording when {0} {1}{2}'.format(use_conf[0].pin, use_conf[0].sense,eol))
+            f.write('# Analog reference is {0}{1}'.format(use_conf[1],eol))
             if use_conf[2] != 1:
-                f.write('# Averaging {0} readings together\n'.format(use_conf[2]))
+                f.write('# Averaging {0} readings together{1}'.format(use_conf[2],eol))
             if convvolts:
-                f.write('# Scale: 0 to {0:.4f} volts\n'.format(self.board.power_voltage))
+                f.write('# Scale: 0 to {0:.4f} volts{1}'.format(self.board.power_voltage,eol))
             else:
-                f.write('# Scale: 0 to 65535\n')
-            f.write('# Notes:\n')
+                f.write('# Scale: 0 to 65535{0}'.format(eol))
+            f.write('# Notes:{}'.format(eol))
             for ln in notes.split('\n'):
-                f.write('#   {0}\n'.format(ln))
+                f.write('#   {0}{1}'.format(ln,eol))
             x0 = len(self._data)
-            f.write('# {0} samples\n'.format(x0))
+            f.write('# {0} samples{1}'.format(x0,eol))
 
-            f.write('# Recording channels:\n')
-            f.write('#   timestamp (in seconds)\n')
+            f.write('# Recording channels:{}'.format(eol))
+            f.write('#   timestamp (in seconds){}'.format(eol))
             # Use passed-in configuration for names, rather than the ones saved
             # but use saved for probes and downsampling
             # Note that channels is the last field of the configuration tuple.
@@ -280,14 +282,16 @@ class DataAcquisition(object):
                     m2 = max(x2/x0-mean**2, 0)
                     if convvolts:
                         ch=self.channels[chan_num]
-                        f.write(" DC= {0:.7g} RMS= {1:.7g}\n".format(
+                        f.write(" DC= {0:.7g} RMS= {1:.7g}{2}".format(
                                   ch.volts(mean,self.board.power_voltage), 
-                                  ch.volts(sqrt(m2),self.board.power_voltage)
+                                  ch.volts(sqrt(m2),self.board.power_voltage),
+                                  eol
                                 ))
                     else:
-                        f.write(" DC= {0:.7g} RMS= {1:.7g}\n".format(mean, sqrt(m2)))
+                        f.write(" DC= {0:.7g} RMS= {1:.7g}{2}".format(
+                        	mean, sqrt(m2),eol))
                 else:
-                    f.write('\n')
+                    f.write(eol)
             old_time=0
             time_offset=None
             for d in self._data:
@@ -296,7 +300,7 @@ class DataAcquisition(object):
                     time_offset=time
                 if time<old_time:
                     time_offset=time
-                    f.write('\n')   # blank line if back in time
+                    f.write(eol)   # blank line if back in time
                 old_time=time
             
                 f.write('{0:.7f}'.format(time-time_offset)) # timestamp
@@ -309,7 +313,7 @@ class DataAcquisition(object):
                     	f.write("{0:.6f}".format(x))
                     else:
                         f.write(str(int(x)))
-                f.write('\n')
+                f.write(eol)
         self.num_saved = len(self._data)
     
     def _onconnect(self):
