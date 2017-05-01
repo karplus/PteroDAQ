@@ -21,7 +21,7 @@
 #define DISABLE_INTERRUPT() cli()
 
 #define PLAT_ATMEGA 1
-#define MODEL_INFO_LEN (6)
+#define MODEL_INFO_LEN (8)
 #define DEFAULT_AREF (1)
 #define QUEUE_SIZE (1024)
 
@@ -48,7 +48,7 @@ void digitalWrite(uint8_t, uint8_t);
 
 #define PLAT_KINETIS 1
 #define PLAT_KL25Z 1
-#define MODEL_INFO_LEN (4)
+#define MODEL_INFO_LEN (8)
 #define MODEL_BOARDNUM (5)
 #define DEFAULT_AREF (1)
 #define QUEUE_SIZE (8192)
@@ -66,7 +66,7 @@ void digitalWrite(uint8_t, uint8_t);
 
 #define PLAT_KINETIS 1
 #define PLAT_TEENSY31 1
-#define MODEL_INFO_LEN (4)
+#define MODEL_INFO_LEN (8)
 #define MODEL_BOARDNUM (6)
 #define DEFAULT_AREF (0)
 #define QUEUE_SIZE (32768)
@@ -83,7 +83,7 @@ void digitalWrite(uint8_t, uint8_t);
 
 #define PLAT_KINETIS 1
 #define PLAT_TEENSYLC 1
-#define MODEL_INFO_LEN (4)
+#define MODEL_INFO_LEN (8)
 #define MODEL_BOARDNUM (7)
 #define DEFAULT_AREF (1)
 #define QUEUE_SIZE (4096)

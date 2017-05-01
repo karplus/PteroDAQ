@@ -153,11 +153,12 @@ class ArduinoAVR(Board):
     def setup(self, model):
         """unpacks model information sent from model info command
             and updates parameters for power_voltage and _tmr_base
-        """
-        m = unpack_from('<HH', model, offset=0)
+        """     
+        m = unpack_from('<HL', model, offset=0)
 #        print("DEBUG: m=", m, "self.bandgap=", self.bandgap, file=sys.stderr)
         self.power_voltage = 65536./(m[0]/self.bandgap) # 10 bit ADC, but left aligned to 16 bits
         self._tmr_base = 1./(m[1]*1000) # frequency given in kHz
+#        print("Frequency ", m[1])
 
 @Board.supported(1)
 class ArduinoStandard(ArduinoAVR):
@@ -466,9 +467,12 @@ class FreedomKL25(Board):
     def setup(self, model):
         """unpacks model information sent from model info command
             and updates parameters for power_voltage
-        """
-        self.power_voltage = 65536./(unpack_from('<H', model)[0]/self.bandgap)
-
+        """      
+        m = unpack_from('<HL', model, offset=0)
+#       print("DEBUG: m=", m, "self.bandgap=", self.bandgap, file=sys.stderr)
+        self.power_voltage = 65536./(m[0]/self.bandgap) # 10 bit ADC, but left aligned to 16 bits
+        self._tmr_base = 1./(m[1]*1000) # frequency given in kHz
+#        print("Frequency ", m[1])
 
 @Board.supported(6)
 class Teensy3_1(Board):
@@ -590,8 +594,12 @@ class Teensy3_1(Board):
     def setup(self, model):
         """unpacks model information sent from model info command
             and updates parameters for power_voltage
-        """
-        self.power_voltage = 65536./(unpack_from('<H', model)[0]/self.bandgap)
+        """       
+        m = unpack_from('<HL', model, offset=0)
+#       print("DEBUG: m=", m, "self.bandgap=", self.bandgap, file=sys.stderr)
+        self.power_voltage = 65536./(m[0]/self.bandgap) # 10 bit ADC, but left aligned to 16 bits
+        self._tmr_base = 1./(m[1]*1000) # frequency given in kHz
+#        print("Frequency ", m[1])
 
 @Board.supported(7)
 class Teensy_LC(Board):
@@ -693,9 +701,12 @@ class Teensy_LC(Board):
     def setup(self, model):
         """unpacks model information sent from model info command
             and updates parameters for power_voltage
-        """
-        self.power_voltage = 65536./(unpack_from('<H', model)[0]/self.bandgap)
-
+        """       
+        m = unpack_from('<HL', model, offset=0)
+#        print("DEBUG: m=", m, "self.bandgap=", self.bandgap, file=sys.stderr)
+        self.power_voltage = 65536./(m[0]/self.bandgap) # 10 bit ADC, but left aligned to 16 bits
+        self._tmr_base = 1./(m[1]*1000) # frequency given in kHz
+#        print("Frequency ", m[1])
 
 
 

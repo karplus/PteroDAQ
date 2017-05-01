@@ -14,7 +14,7 @@
 //     4    Leonardo equivalent
 //     5    KL25Z
 //  [2,3]   Bandgap raw ADC reading
-//  [4,5]   CPU frequency in kHz (Arduino only)
+//  [4,5,6,7]   CPU frequency in kHz
 uint8_t* get_model(void) {
     static uint8_t resp[MODEL_INFO_LEN];
     uint16_t bandgap;
@@ -53,6 +53,8 @@ uint8_t* get_model(void) {
     resp[3] = (bandgap >> 8) & 0xFF;
     resp[4] = (F_CPU/1000) & 0xFF;
     resp[5] = ((F_CPU/1000) >> 8) & 0xFF;
+    resp[6] = ((F_CPU/1000) >> 16) & 0xFF;
+    resp[7] = ((F_CPU/1000) >> 24) & 0xFF;
     return resp;
 }
 
@@ -77,6 +79,10 @@ uint8_t* get_model(void) {
     bandgap = sum_bandgap >> 6;
     resp[2] = bandgap & 0xFF;
     resp[3] = (bandgap >> 8) & 0xFF;
+    resp[4] = (F_CPU/1000) & 0xFF;
+    resp[5] = ((F_CPU/1000) >> 8) & 0xFF;
+    resp[6] = ((F_CPU/1000) >> 16) & 0xFF;
+    resp[7] = ((F_CPU/1000) >> 24) & 0xFF;
     return resp;
 }
 
