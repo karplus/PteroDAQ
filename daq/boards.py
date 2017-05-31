@@ -49,17 +49,20 @@ class Board(object):
     default_avg = '1'   # default averaging is to use none (averaging 1 sample)
                         # but can be overridden in specific boards
     
-    timestamp_res = None # resolution of timestamps in seconds
-    power_voltage = None # power supply voltage, needed for analog reference info
     
-    frequency_dead_time  = 0  # how much time, in seconds is frequency counter turned off for
-                        # on each sample.  If the count during the dead time is greater than 1, then
-                        # counts will be missed.
+    # Some of these should probably be instance variables rather than class variables.
+    # We've been sloppy about this, because we assume only one board ever instantiated.
+    power_voltage = None # power supply voltage, needed for analog reference info
+    default_timestamp_res = None # default resolution of time stamp, in seconds
+    
+    frequency_dead_cycles = 0	# how many cycles is frequency counter turned off for
+    	# on each sample.
 
     def __init__(self):
         """Build dict self.name_from_probe, mapping probes to names.
         Build dict self.probe_from_name, mapping names to probes.
         """
+        self.timestamp_res = None # resolution of timestamps in seconds
         self.name_from_probe=dict()
         self.probe_from_name=dict()
         self.gain_from_name=dict()
@@ -106,6 +109,26 @@ class Board(object):
         """Is this the name for a digital channel?"""
         return name in (x[0] for x in self.digitals)
     
+    def setup(self, model):
+        """unpacks model information sent from model info command
+            and updates parameters for power_voltage and timing
+        """       
+        m = unpack_from('<HL', model, offset=0)
+#        print("DEBUG: m=", m, "self.bandgap=", self.bandgap, file=sys.stderr)
+        self.power_voltage = 65536./(m[0]/self.bandgap) # left aligned to 16 bits (even if only 10 bits)
+        self._tmr_base = 1./(m[1]*1000) # frequency given in kHz
+#        print("Frequency ", m[1])
+        if self.default_timestamp_res is None: 
+            # The Kinetis boards all use PIT0&1 running at half the bus clock
+            self.timestamp_res = self._tmr_base*2
+        else:
+            self.timestamp_res = default_timestamp_res
+         
+        # how much time, in seconds is frequency counter turned off for
+        # on each sample.  If the count during the dead time is greater than 1, then
+        # counts will be missed.
+        self.frequency_dead_time = self.frequency_dead_cycles * self._tmr_base
+
     @classmethod
     def supported(cls, model_num):
         """class decorator for appending subclasses to 
@@ -131,7 +154,7 @@ class ArduinoAVR(Board):
     avg = (
         ('1', 1),)
     bandgap = 1.1
-    timestamp_res = 0.5e-6 # half-microsecond
+    default_timestamp_res = 0.5e-6 # half-microsecond
     
     def timer_calc(self, period):
         """computes counter parameters
@@ -149,16 +172,7 @@ class ArduinoAVR(Board):
         top = limit(round(period / (pr * base)), 3, (1<<16)-1)
         actual = (pr * top * base)
         return actual, (n, top)
-    
-    def setup(self, model):
-        """unpacks model information sent from model info command
-            and updates parameters for power_voltage and _tmr_base
-        """     
-        m = unpack_from('<HL', model, offset=0)
-#        print("DEBUG: m=", m, "self.bandgap=", self.bandgap, file=sys.stderr)
-        self.power_voltage = 65536./(m[0]/self.bandgap) # 10 bit ADC, but left aligned to 16 bits
-        self._tmr_base = 1./(m[1]*1000) # frequency given in kHz
-#        print("Frequency ", m[1])
+
 
 @Board.supported(1)
 class ArduinoStandard(ArduinoAVR):
@@ -447,8 +461,7 @@ class FreedomKL25(Board):
         ('32', 7))
     default_avg='4'
     
-    timestamp_res = 1/24e6 # approximately 0.04 microseconds
-    frequency_dead_time = 1e-6  # about 1usec dead time in frequency counter (BUG: number not checked)
+    frequency_dead_cycles = 48  # about 1usec dead time in frequency counter (BUG: number not checked)
 
     def timer_calc(self, period):
         """computes counter parameters
@@ -458,21 +471,12 @@ class FreedomKL25(Board):
             returns (actual, (n,reload))
         """
         # using PIT0&1, which runs off the bus clock (half system clock)
-        base = 1./24e6
+        base = self.timestamp_res
         n = limit(int(period/base/(1<<32)),0,(1<<8)-1)
         reload = limit(round(period / base/ (n+1)) - 1, 1, (1<<32)-1)
         actual = (reload + 1)*(n+1) * base
         return actual, (n, reload)
-    
-    def setup(self, model):
-        """unpacks model information sent from model info command
-            and updates parameters for power_voltage
-        """      
-        m = unpack_from('<HL', model, offset=0)
-#       print("DEBUG: m=", m, "self.bandgap=", self.bandgap, file=sys.stderr)
-        self.power_voltage = 65536./(m[0]/self.bandgap) # 10 bit ADC, but left aligned to 16 bits
-        self._tmr_base = 1./(m[1]*1000) # frequency given in kHz
-#        print("Frequency ", m[1])
+
 
 @Board.supported(6)
 class Teensy3_1(Board):
@@ -569,13 +573,8 @@ class Teensy3_1(Board):
     # Programmable Gain Amplifier settings not done yet
     # Use of ADC1 not done yet
     
-    # TODO: Make F_CPU be returned from model command
-    #   and set timestamp_res in setup()
-    
-    # PIT0&1 run off bus clock, which is half system (72MHz ,not overclocked)
-    timestamp_res = 1/36e6 
 
-    frequency_dead_time = 34/72e6        #  dead time in frequency counter (about 34 cycles)
+    frequency_dead_cycles = 34       #  dead time in frequency counter (about 34 cycles)
 
     def timer_calc(self, period):
         """computes counter parameters
@@ -585,21 +584,12 @@ class Teensy3_1(Board):
             returns (actual, (n,reload))
         """
         # using PIT0&1, which runs off the bus clock (half system clock)
-        base = 1./36e6
+        base = self.timestamp_res
         n = limit(int(period/base/(1<<32)),0,(1<<8)-1)
         reload = limit(round(period / base/ (n+1)) - 1, 1, (1<<32)-1)
         actual = (reload + 1)*(n+1) * base
         return actual, (n, reload)
-    
-    def setup(self, model):
-        """unpacks model information sent from model info command
-            and updates parameters for power_voltage
-        """       
-        m = unpack_from('<HL', model, offset=0)
-#       print("DEBUG: m=", m, "self.bandgap=", self.bandgap, file=sys.stderr)
-        self.power_voltage = 65536./(m[0]/self.bandgap) # 10 bit ADC, but left aligned to 16 bits
-        self._tmr_base = 1./(m[1]*1000) # frequency given in kHz
-#        print("Frequency ", m[1])
+
 
 @Board.supported(7)
 class Teensy_LC(Board):
@@ -678,11 +668,7 @@ class Teensy_LC(Board):
         ('32', 7))
     default_avg='32'
     
-    # TODO: Make F_CPU be returned from model command
-    #   and set timestamp_res in setup()
-    
-    timestamp_res = 1/24e6 # approximately 0.04 microseconds
-    frequency_dead_time = 19/48e6  # 19 cycles of dead time from DMAMUX disable to DMAMUX enable
+    frequency_dead_cycles = 19  # 19 cycles of dead time from DMAMUX disable to DMAMUX enable
 
     def timer_calc(self, period):
         """computes counter parameters
@@ -692,21 +678,11 @@ class Teensy_LC(Board):
             returns (actual, (n,reload))
         """
         # using PIT0&1, which runs off the bus clock (half system clock)
-        base = 1./24e6
+        base = self.timestamp_res
         n = limit(int(period/base/(1<<32)),0,(1<<8)-1)
         reload = limit(round(period / base/ (n+1)) - 1, 1, (1<<32)-1)
         actual = (reload + 1)*(n+1) * base
         return actual, (n, reload)
-    
-    def setup(self, model):
-        """unpacks model information sent from model info command
-            and updates parameters for power_voltage
-        """       
-        m = unpack_from('<HL', model, offset=0)
-#        print("DEBUG: m=", m, "self.bandgap=", self.bandgap, file=sys.stderr)
-        self.power_voltage = 65536./(m[0]/self.bandgap) # 10 bit ADC, but left aligned to 16 bits
-        self._tmr_base = 1./(m[1]*1000) # frequency given in kHz
-#        print("Frequency ", m[1])
 
 
 
