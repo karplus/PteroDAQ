@@ -6,7 +6,7 @@
 #include "led.h"
 #include "frequency.h"
 
-#define DAQ_VERSION "v0.2" // must agree with firmware_version in Python code
+#define DAQ_VERSION "v0.3" // must agree with firmware_version in Python code
 #define HANDSHAKE_CODE "DAQ"
 
 //  PROTOCOL

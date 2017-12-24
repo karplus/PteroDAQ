@@ -17,7 +17,7 @@ except ImportError:     # either before Python2.6 or one of the Python 3.*
 from comm import CommPort, tobytes, tostr
 from boards import getboardinfo
 
-firmware_version = b'v0.2' # code used in firmware to identify protocol version
+firmware_version = b'v0.3' # code used in firmware to identify protocol version
 
 #  PROTOCOL
 # Every command communication consists of a command from the host
