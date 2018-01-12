@@ -1,9 +1,14 @@
 #include "tim.h"
 
 #if PLAT_KINETIS
-// only one of the following was defined in Teensyduino's kinetis.h
-// #define SCB_ICSR_PENDSTSET		((uint32_t) (1<<26))
-#define SCB_ICSR_PENDSTCLR		((uint32_t) (1<<25))
+  // These should be defined in Teensyduino's kinetis.h
+  // but were missing in some releases.
+   #ifndef SCB_ICSR_PENDSTSET
+	#define SCB_ICSR_PENDSTSET		((uint32_t) (1<<26))
+   #endif
+   #ifndef SCB_ICSR_PENDSTCLR
+	#define SCB_ICSR_PENDSTCLR		((uint32_t) (1<<25))
+   #endif
 #endif
 
 
