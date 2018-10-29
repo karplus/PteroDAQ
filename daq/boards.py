@@ -119,7 +119,8 @@ class Board(object):
         self._tmr_base = 1./(m[1]*1000) # frequency given in kHz
 #        print("Frequency ", m[1])
         if self.default_timestamp_res is None: 
-            # The Kinetis boards all use PIT0&1 running at half the bus clock
+            # The Kinetis boards all use PIT0&1 running at the bus clock
+            # (half the system clock, with default OUTDIV4=1)
             self.timestamp_res = self._tmr_base*2
         else:
             self.timestamp_res = default_timestamp_res

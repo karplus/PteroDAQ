@@ -2,14 +2,37 @@
 
 #if PLAT_KL25Z
 
+    // bus clock is F_CPU/2 
+    // ADC clock need to be 2MHz-12MHz, divided down from bus clock
+#if F_CPU < 4000000
+     #warning "F_CPU too low for ADC  operation"
+#elif F_CPU <= 24000000
+    // bus clock
+    #define ADC_clock_setting   (ADC_CFG1_ADICLK(0) | ADC_CFG1_ADIV(0))
+#elif F_CPU <= 48000000    
+   // bus clock/2
+    #define ADC_clock_setting   (ADC_CFG1_ADICLK(0) | ADC_CFG1_ADIV(1))
+#elif F_CPU <= 96000000    
+   // bus clock/4
+    #define ADC_clock_setting   (ADC_CFG1_ADICLK(0) | ADC_CFG1_ADIV(2))
+#elif F_CPU <= 192000000    
+   // bus clock/8
+    #define ADC_clock_setting   (ADC_CFG1_ADICLK(0) | ADC_CFG1_ADIV(3))
+#elif F_CPU <= 384000000    
+   // (bus clock/2)/8
+    #define ADC_clock_setting   (ADC_CFG1_ADICLK(1) | ADC_CFG1_ADIV(3))
+#else     
+     #warning "F_CPU too high for ADC  operation"
+#endif
+
 static bool adc_calib(void) {
     uint16_t acc;
     PMC->REGSC |= PMC_REGSC_BGBE_MASK;
     ADC0->CFG1 = 
-        ADC_CFG1_ADICLK(1) | // half bus clock
         ADC_CFG1_MODE(3) | // sixteen-bit
         ADC_CFG1_ADLSMP_MASK | // long sample
-        ADC_CFG1_ADIV(2); // clock divide four
+	ADC_clock_setting;
+
     ADC0->SC2 = ADC_SC2_REFSEL(1); // vdda reference
     ADC0->SC3 = ADC_SC3_AVGS(3) | // average thirty-two samples
         ADC_SC3_AVGE_MASK | // enable averaging
@@ -34,19 +57,18 @@ static bool adc_calib(void) {
 void adc_init(void) {
     SIM->SCGC6 |= SIM_SCGC6_ADC0_MASK; // clock gate enable
     adc_calib();
-    // bus clock is 24MHz
-    // set conversion rate at bus clock/4 with long sample times
-    // That sets ADCK to 6MHz
     ADC0->CFG1 = 
         ADC_CFG1_MODE(3) | // sixteen-bit
         ADC_CFG1_ADLSMP_MASK | // long sample
-        ADC_CFG1_ADIV(2); // clock divide four
+        ADC_clock_setting;
     ADC0->CFG2 = 0;
     ADC0->SC3 &= ~ADC_SC3_AVGE_MASK; // no hardware averaging
-    // Conversion time is (num_avg*(25) + 5)*4 + 5 bus clocks for single-ended
-    //      (num_avg*(34) + 5)*4 + 5 bus clocks for differential
+    
+    // Assumin 48MHz CPU, so 24MHz bus
+    // Conversion time is (num_avg*(25) + 5)*2 + 5 bus clocks for single-ended
+    //      (num_avg*(34) + 5)*2 + 5 bus clocks for differential
     //
-    // for example, 32x single-ended: 3225 cycles or 134.4 us
+    // for example, 32x single-ended: 1665 cycles or 67.3 us
 }
 
 void adc_aref(uint8_t choice) {
@@ -73,23 +95,45 @@ uint16_t adc_read(uint8_t mux) {
 
 #elif PLAT_TEENSY31
 
+    // bus clock is F_CPU/2 
+    // ADC clock need to be 2MHz-12MHz, divided down from bus clock
+#if F_CPU < 4000000
+     #warning "F_CPU too low for ADC  operation"
+#elif F_CPU <= 24000000
+    // bus clock
+    #define ADC_clock_setting   (ADC_CFG1_ADICLK(0) | ADC_CFG1_ADIV(0))
+#elif F_CPU <= 48000000    
+   // bus clock/2
+    #define ADC_clock_setting   (ADC_CFG1_ADICLK(0) | ADC_CFG1_ADIV(1))
+#elif F_CPU <= 96000000    
+   // bus clock/4
+    #define ADC_clock_setting   (ADC_CFG1_ADICLK(0) | ADC_CFG1_ADIV(2))
+#elif F_CPU <= 192000000    
+   // bus clock/8
+    #define ADC_clock_setting   (ADC_CFG1_ADICLK(0) | ADC_CFG1_ADIV(3))
+#elif F_CPU <= 384000000    
+   // (bus clock/2)/8
+    #define ADC_clock_setting   (ADC_CFG1_ADICLK(1) | ADC_CFG1_ADIV(3))
+#else     
+     #warning "F_CPU too high for ADC  operation"
+#endif
+
 static bool adc_calib(void) {
     uint16_t acc;
     ADC0_CFG1 = 
-        ADC_CFG1_ADICLK(1) | // half bus clock
         ADC_CFG1_MODE(3) | // sixteen-bit
         ADC_CFG1_ADLSMP | // long sample
-        ADC_CFG1_ADIV(3); // clock divide eight
+	ADC_clock_setting;
+    
     ADC0_SC2 = ADC_SC2_REFSEL(0); // Exernal (vdda) reference
     ADC0_SC3 = ADC_SC3_AVGS(3) | // average thirty-two samples
         ADC_SC3_AVGE | // enable averaging
         ADC_SC3_CAL; // begin calibration
 
     ADC1_CFG1 = 
-        ADC_CFG1_ADICLK(1) | // half bus clock
         ADC_CFG1_MODE(3) | // sixteen-bit
         ADC_CFG1_ADLSMP | // long sample
-        ADC_CFG1_ADIV(3); // clock divide eight
+	ADC_clock_setting;
     ADC1_SC2 = ADC_SC2_REFSEL(0); // Exernal (vdda) reference
     ADC1_SC3 = ADC_SC3_AVGS(3) | // average thirty-two samples
         ADC_SC3_AVGE | // enable averaging
@@ -139,20 +183,22 @@ void adc_init(void) {
     ADC0_CFG1 = 
         ADC_CFG1_MODE(3) | // sixteen-bit
         ADC_CFG1_ADLSMP | // long sample
-		ADC_CFG1_ADIV(3); // clock divide eight
+	ADC_clock_setting;
     ADC0_CFG2 = 0;
     ADC0_SC3 &= ~ADC_SC3_AVGE; // no hardware averaging
 
     ADC1_CFG1 = 
         ADC_CFG1_MODE(3) | // sixteen-bit
-        ADC_CFG1_ADIV(3); // clock divide eight
+        ADC_CFG1_ADLSMP | // long sample
+	ADC_clock_setting;
     ADC1_CFG2 = 0;
     ADC1_SC3 &= ~ADC_SC3_AVGE; // no hardware averaging
 
+    // Assuming 72MHz CPU, so 36MHz bus and bus/4
     // Conversion time is (num_avg*(25) + 5)*4 + 5 bus clocks for single-ended
     //      (num_avg*(34) + 5)*4 + 5 bus clocks for differential
     //
-    // for example, 32x single-ended: 3225 cycles 
+    // for example, 32x single-ended: 3225 cycles or 89.6us/conversion 
 }
 
 void adc_aref(uint8_t choice) {
@@ -197,13 +243,29 @@ uint16_t adc_read(uint8_t mux) {
 /////////////////////////////////////////
 #elif PLAT_TEENSYLC
 
+    // bus clock is F_CPU/2 
+    // ADC clock need to be 2MHz-12MHz, divided down from bus clock
+#define ADC_clock_setting ADC_CFG1_ADIV(1) // clock divide two
+#if F_CPU < 4000000
+     #warning "F_CPU too low for ADC  operation"
+#elif F_CPU <= 24000000
+     #define ADC_clock_setting ADC_CFG1_ADIV(0) // clock divide one
+#elif F_CPU <= 48000000    
+    #define ADC_clock_setting ADC_CFG1_ADIV(1) // clock divide two
+#elif F_CPU <= 96000000    
+    #define ADC_clock_setting ADC_CFG1_ADIV(2) // clock divide four
+#elif F_CPU <= 192000000    
+    #define ADC_clock_setting ADC_CFG1_ADIV(3) // clock divide four
+#else     
+     #warning "F_CPU too high for ADC  operation"
+#endif
+
 static bool adc_calib(void) {
     uint16_t acc;
     ADC0_CFG1 = 
-        ADC_CFG1_ADICLK(1) | // half bus clock
         ADC_CFG1_MODE(3) | // sixteen-bit
         ADC_CFG1_ADLSMP | // long sample
-        ADC_CFG1_ADIV(2); // clock divide four
+	ADC_clock_setting;
     ADC0_SC2 = ADC_SC2_REFSEL(1); // vdd) reference
     ADC0_SC3 = ADC_SC3_AVGS(3) | // average thirty-two samples
         ADC_SC3_AVGE | // enable averaging
@@ -232,20 +294,18 @@ void adc_init(void) {
     PMC_REGSC |= PMC_REGSC_BGBE;
     SIM_SCGC6 |= SIM_SCGC6_ADC0; // clock gate enable for ADC0
     adc_calib();
-    // bus clock is 24MHz
-    // set conversion rate at bus clock/4 with long sample times
-    // That sets ADCK to 6MHz
     ADC0_CFG1 = 
         ADC_CFG1_MODE(3) | // sixteen-bit
      	ADC_CFG1_ADLSMP | // long sample
-		ADC_CFG1_ADIV(2); // clock divide four
+		ADC_clock_setting;
     ADC0_CFG2 = 0;
     ADC0_SC3 &= ~ADC_SC3_AVGE; // no hardware averaging
 
-    // Conversion time is (num_avg*(25) + 5)*4 + 5 bus clocks for single-ended
-    //      (num_avg*(34) + 5)*4 + 5 bus clocks for differential
+    // Assuming 48MHz clock, so 24MHz bus clock, divide by 2
+    // Conversion time is (num_avg*(25) + 5)*2 + 5 bus clocks for single-ended
+    //      (num_avg*(34) + 5)*2 + 5 bus clocks for differential
     //
-    // for example, 32x single-ended: 3225 cycles 
+    // for example, 32x single-ended: 1615 cycles or 67.3us/conversion
 }
 
 void adc_aref(uint8_t choice) {
