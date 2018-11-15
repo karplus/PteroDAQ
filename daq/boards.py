@@ -55,8 +55,8 @@ class Board(object):
     power_voltage = None # power supply voltage, needed for analog reference info
     default_timestamp_res = None # default resolution of time stamp, in seconds
     
-    frequency_dead_cycles = 0	# how many cycles is frequency counter turned off for
-    	# on each sample.
+    frequency_dead_cycles = 0   # how many cycles is frequency counter turned off for
+        # on each sample.
 
     def __init__(self):
         """Build dict self.name_from_probe, mapping probes to names.
@@ -139,6 +139,51 @@ class Board(object):
             cls.by_id[model_num]=brd
             return brd
         return decorator
+     
+    def _latex_columns(board):
+        """returns the names and values of the columns of the latex table
+        """
+        return ( ("Board names", board.names)
+                ,      ("analog", len(board.analogs))
+                ,      ("differential", len(board.differentials))
+                ,      ("digital", len(board.digitals))
+                ,      ("frequency", len(board.frequencies))
+                ,      ("trigger", len(board.eint))
+                )           
+     
+    def _print_latex_row(board):
+         """print one row of a LaTeX table describing this board
+         Intended for use from Board.print_latex_table only.
+         """
+         cols = Board._latex_columns(board)
+         bnames = cols[0][1]
+         print("\\begin{tabular}{l}")
+         print("\\\\")
+         for name in bnames:
+              print(name, "\\\\");
+         print("\\\\");
+         print("\\end{tabular} &")
+         
+         for col_name,col_value in cols[1:-1]:
+              print ( col_value, "&")
+         print (cols[-1][1], "\\\\")
+         print ( "\\hline" )
+     
+    def print_latex_table():
+        """Print a LaTeX table listing all the boards
+        """
+        board1=Board.by_id[1]
+        cols = Board._latex_columns(board1)
+        print("\\begin{tabular}[c]{l|", "c"*(len(cols)-1), "}")
+        print("& \\multicolumn{", len(cols)-1, "}{c}{channels}\\\\")
+        for col_name,col_value in cols[:-1]:
+                print ( col_name, "&", end="")
+        print(cols[-1][0], "\\\\")
+        print("\\hline")
+        for id in range(1,len(Board.by_id)+1):
+            Board._print_latex_row(Board.by_id[id])
+        print("\\end{tabular}")
+
         
 class ArduinoAVR(Board):
     """Board description abstract class for Arduino boards
