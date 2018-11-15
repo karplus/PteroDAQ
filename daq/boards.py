@@ -53,7 +53,6 @@ class Board(object):
     # Some of these should probably be instance variables rather than class variables.
     # We've been sloppy about this, because we assume only one board ever instantiated.
     power_voltage = None # power supply voltage, needed for analog reference info
-    default_timestamp_res = None # default resolution of time stamp, in seconds
     
     frequency_dead_cycles = 0   # how many cycles is frequency counter turned off for
         # on each sample.
@@ -118,12 +117,7 @@ class Board(object):
         self.power_voltage = 65536./(m[0]/self.bandgap) # left aligned to 16 bits (even if only 10 bits)
         self._tmr_base = 1./(m[1]*1000) # frequency given in kHz
 #        print("Frequency ", m[1])
-        if self.default_timestamp_res is None: 
-            # The Kinetis boards all use PIT0&1 running at the bus clock
-            # (half the system clock, with default OUTDIV4=1)
-            self.timestamp_res = self._tmr_base*2
-        else:
-            self.timestamp_res = default_timestamp_res
+        self.timestamp_res = self._tmr_base* self.CPU_clocks_per_tick
          
         # how much time, in seconds is frequency counter turned off for
         # on each sample.  If the count during the dead time is greater than 1, then
@@ -190,6 +184,7 @@ class ArduinoAVR(Board):
     and compatibles using AVR processors
     """
     
+    CPU_clocks_per_tick = 8
     intsense = (
         ('rises', 3),
         ('falls', 2),
@@ -442,6 +437,7 @@ class Arduino32u4(ArduinoAVR):
 @Board.supported(5)
 class FreedomKL25(Board):
     names = ('FRDM-KL25Z',)
+    CPU_clocks_per_tick = 2
     bandgap = 1.0
     analogs = (
         ('PTB0', 8),
@@ -529,6 +525,7 @@ class Teensy3_1(Board):
     names = ('Teensy 3.1',
              'Teensy 3.2',
             )
+    CPU_clocks_per_tick = 2
     bandgap = 1
     # Note: all analog codes written assuming ADC0 and channel b
     CHANB=64
@@ -640,6 +637,7 @@ class Teensy3_1(Board):
 @Board.supported(7)
 class Teensy_LC(Board):
     names = ('Teensy LC',)
+    CPU_clocks_per_tick = 2
     bandgap = 1
     CHANB=0x40
     DIFF=0x20
