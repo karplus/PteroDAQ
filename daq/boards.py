@@ -152,10 +152,10 @@ class Board(object):
          cols = Board._latex_columns(board)
          bnames = cols[0][1]
          print("\\begin{tabular}{l}")
-         print("\\\\")
+         print("\\rule{0em}{3ex}%")
          for name in bnames:
-              print(name, "\\\\");
-         print("\\\\");
+              print(name, "\\\\")
+         print("[0.8ex]")
          print("\\end{tabular} &")
          
          for col_name,col_value in cols[1:-1]:
