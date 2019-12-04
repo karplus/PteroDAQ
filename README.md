@@ -8,9 +8,9 @@ PteroDAQ is made available under the terms of the MIT License, included in the L
 
 ## Documentation
 
-* [[Installation]] (includes download links and list of hardware requirements)
-* [[Usage]] (not written yet)
-* [[Description of internals]] (not written yet, see source code)
+* [Installation](./Installation.md) (includes download links and list of hardware requirements)
+* [Usage] (not written yet)
+* [Description of internals] (not written yet, see source code)
 
 ## Release notes
 
