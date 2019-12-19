@@ -19,3 +19,4 @@ fit.log
 *.lot
 *.toc
 
+*.pyc
