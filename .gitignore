@@ -20,3 +20,6 @@ fit.log
 *.toc
 
 *.pyc
+daq/getports/ioreg-no-hub
+daq/getports/ioreg-not-plugged-in
+daq/getports/ioreg-plugged-in
