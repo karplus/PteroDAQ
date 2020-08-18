@@ -15,12 +15,14 @@ We recommend the Teensy LC board as the best price/performance ratio, breadboard
 
 ## Software setup
 
+There is now a [YouTube video](https://youtu.be/Yvg109QyVI0) explaining installation of PteroDAQ on macos.
+
 Download and extract PteroDAQ, using the "Clone or download" button on the [main page](https://github.com/karplus/PteroDAQ) or download the [zip file](https://github.com/karplus/PteroDAQ/archive/master.zip) directly.
 This will get the latest version of the code—you can also request earlier, named releases, if the latest version seems to be buggy.
 
-Ensure you have a recent version of Python installed (2.6, 2.7, 3.3 through 3.5; version 3.0 through 3.2 and 3.6 through 3.7 may also work but have not been tested). Python is available to download from [the Python site](http://python.org), but most testing has been done with the [Anaconda python distribution](https://www.anaconda.com/distribution/). When installing, make sure you include support for Tcl/Tk and Tkinter. On Linux and OS X, the Python installer will probably add itself to your bash path; if not, edit your `~/.bashrc` file manually.
+Ensure you have a recent version of Python installed (2.6, 2.7, 3.3 through 3.5, and 3.8 have been tested; version 3.0 through 3.2 and 3.6 through 3.7 may also work but have not been tested). Python is available to download from [the Python site](http://python.org), but most testing has been done with the [Anaconda python distribution](https://www.anaconda.com/products/individual). When installing, make sure you include support for Tcl/Tk and Tkinter. On Linux and OS X, the Python installer will probably add itself to your bash path; if not, edit your `~/.bashrc` file manually. On Windows, make sure you select having Python on your path, so that it is runnable from the Command window.
 
-## Arduino setup
+## Arduino setup (not needed with Teensy boards, only Arduino boards)
 
 1. Instruction for installing the Arduino software are available on [the Arduino site](https://www.arduino.cc/en/Guide/HomePage).
 2. Once you have installed the Arduino IDE and (if necessary) drivers, open the PteroDAQ file `firmware/firmware.ino` with the Arduino app. All the files in `firmware` folder are needed, and the folder must have the name `firmware`, as the Arduino app compiles all the C and C++ files in the folder to make the program, and it checks that the folder has the same name as the .ino file. 
@@ -28,12 +30,11 @@ Ensure you have a recent version of Python installed (2.6, 2.7, 3.3 through 3.5;
 
 ## Teensy setup
 
-1. Install Arduino software from [the Arduino site](https://www.arduino.cc/en/Guide/HomePage). Note: as of 2019 December 3 Teensyduino is supported only on Arduino version 1.8.5 and 1.8.7 through 1.8.10.  See the [Teensyduino download page](https://www.pjrc.com/teensy/td_download.html) for more up-to-date information about which Arduino versions are supported. On Macintosh machines, run Arduino once before installing Teensyduino, so that the malware check doesn't see the Arduino download as contaminated.
-2. Install [Teensyduino](https://www.pjrc.com/teensy/td_download.html) Note that on Windows, you will probably have to run the Teensyduino installer with administrator privileges, which requires a right click on the file.
-3. Once you have installed the Arduino IDE and (if necessary) drivers, open the PteroDAQ file `firmware/firmware.ino` with the Arduino app. All the files in `firmware` folder are needed, and the folder must have the name `firmware`, as the Arduino app compiles all the C and C++ files in the folder to make the program, and it checks that the folder has the same name as the .ino file. Note that on newer releases of Mac OS X, you may need to open the "System Preferences" application click on "security and privacy", and allow apps downloaded from anywhere, before the Arduino IDE will run.
-4. Select your board (Teensy 3.1/3.2 with 72MHz clocking and optimized, or Teensy LC with 48MHz clocking) and its serial port from the Arduino Tools menu. Select optimization for speed rather than code size, and press the Upload button.  On the first download, you may be instructed by the Teensy loader to press the button on the board—if so, do so.
+1. See the [Teensyduino download page](https://www.pjrc.com/teensy/td_download.html) and follow the instructions there for installing Teensyduino.
+3. Once you have installed the Arduino IDE and (if necessary) drivers, open the PteroDAQ file `firmware/firmware.ino` with the Arduino app. All the files in `firmware` folder are needed, and the folder must have the name `firmware`, as the Arduino app compiles all the C and C++ files in the folder to make the program, and it checks that the folder has the same name as the .ino file. 
+4. Select your board (Teensy 3.1/3.2 with 72MHz clocking or Teensy LC with 48MHz clocking) and its serial port from the Arduino Tools menu. Select optimization for fastest rather than smallest code size, and press the Upload button.  On the first download, you may be instructed by the Teensy loader to press the button on the board—if so, do so.
 
-## FRDM-KL25Z setup
+## FRDM-KL25Z setup  (not recently tested—may no longer work, as mbed may have changed)
 
 The FRDM-KL25Z board has two USB ports, one of which is labeled "SDA" on the board. The SDA port is only for firmware updates; normal usage is with the non-SDA port. Each of the operating systems has somewhat different techniques for doing the initial setup. There are two main steps: getting the mbed firmware onto the board for downloading, and getting the PteroDAQ code onto the board for running.
 
