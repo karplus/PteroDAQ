@@ -251,6 +251,7 @@ class DataAcquisition(object):
             f.write('# Analog reference is {0}{1}'.format(use_conf[1],eol))
             if use_conf[2] != 1:
                 f.write('# Averaging {0} readings together{1}'.format(use_conf[2],eol))
+            f.write('# Power supply is {0:.4f} volts'.format(self.board.power_voltage,eol))
             if convvolts:
                 f.write('# Scale: 0 to {0:.4f} volts{1}'.format(self.board.power_voltage,eol))
             else:
